@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>¡Gracias por tu consulta! | Consultoría Digital</title>
+    <meta name="description" content="Recibimos tu consulta. Nuestro equipo la revisará y te contactará pronto.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://{{ request.host_url }}gracias">
+
+    <meta property="og:title" content="¡Gracias! | Consultoría Digital">
+    <meta property="og:description" content="Tu consulta fue recibida. Te contactaremos pronto.">
+    <meta property="og:type" content="website">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>⚡</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <meta http-equiv="refresh" content="12;url=/">
+</head>
+<body>
+
+    <main class="thanks-wrapper" role="main">
+        <article class="thanks-card" aria-labelledby="thanks-title">
+
+            <!-- Checkmark animado -->
+            <div class="checkmark-circle" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+
+            <h1 id="thanks-title">¡Gracias{% if nombre %}, {{ nombre }}{% endif %}!</h1>
+            <p class="thanks-msg">
+                Recibimos tu consulta correctamente. Ya estamos trabajando en ella.
+            </p>
+
+            <!-- Timeline: ¿qué pasa ahora? -->
+            <div class="timeline">
+                <div class="timeline-step">
+                    <div class="timeline-icon">📧</div>
+                    <div class="timeline-body">
+                        <h4>Email de confirmación enviado</h4>
+                        <p>Acabamos de enviarte un correo a tu casilla con los detalles de tu consulta. Revisá tu bandeja de entrada (y spam por las dudas).</p>
+                    </div>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-icon">🤖</div>
+                    <div class="timeline-body">
+                        <h4>Nuestra IA está analizando tu caso</h4>
+                        <p>Un sistema de inteligencia artificial clasificó tu consulta y la priorizó para que el equipo la atienda según su urgencia.</p>
+                    </div>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-icon">📞</div>
+                    <div class="timeline-body">
+                        <h4>Te contactamos en menos de 24 horas</h4>
+                        <p>Un especialista revisará tu mensaje y se comunicará con vos para coordinar los próximos pasos.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <a href="/" class="btn-home">← Volver al inicio</a>
+            <p class="countdown-text">Redirección automática en <span id="countdown">12</span> segundos</p>
+
+        </article>
+    </main>
+
+    <footer class="footer" role="contentinfo">
+        <p class="footer-byline">© 2026 · TFI Tecnicatura Superior en Programación · UTN FRM</p>
+    </footer>
+
+    <script nonce="{{ csrf_token }}">
+        let s = 12;
+        const el = document.getElementById('countdown');
+        setInterval(() => { s--; if (s >= 0) el.textContent = s; }, 1000);
+    </script>
+</body>
+</html>

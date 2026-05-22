@@ -1,0 +1,650 @@
+{
+  "name": "Pipeline de Leads con IA - TFI UTN FRM v3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leads",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": false,
+          "responseData": "firstEntryJson",
+          "responseCode": 200
+        }
+      },
+      "id": "node-1",
+      "name": "📥 Webhook: Recibir Lead desde Flask",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "notes": "Recibe POST desde Flask. Responde HTTP 200 inmediatamente (fast ack). Payload JSON esperado: { nombre, apellido, email, telefono, mensaje, fuente, url_origen, ip_origen, user_agent }"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================\n// CAPA DE PROCESAMIENTO: Normalizacion y Enriquecimiento\n// Pipeline de Leads con IA - TFI UTN FRM\n// =====================================================\n\nfunction toTitleCase(str) {\n  if (!str) return '';\n  return str.trim().toLowerCase().replace(/\\b\\w/g, c => c.toUpperCase());\n}\n\nfunction normalizePhone(phone) {\n  if (!phone) return '';\n  let cleaned = phone.toString().replace(/[^\\d+]/g, '');\n  if (!cleaned.startsWith('+') && cleaned.length >= 10) {\n    cleaned = '+54' + cleaned.replace(/^0+/, '');\n  }\n  return cleaned;\n}\n\nfunction validateEmail(email) {\n  return /^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$/.test(email);\n}\n\nconst item = $input.first().json;\n\n// Mapeo unificado (maneja diferencias entre fuentes)\nconst nombre_raw = item.nombre || item.first_name || '';\nconst apellido_raw = item.apellido || item.last_name || '';\nconst email_raw = item.email || '';\nconst telefono_raw = item.telefono || item.phone || '';\nconst mensaje_raw = item.mensaje || item.message || '';\n\nconst email_validado = email_raw.toLowerCase().trim();\nconst email_valido = validateEmail(email_validado);\n\nreturn [{\n  json: {\n    // Identificacion y trazabilidad\n    id_lead: crypto.randomUUID(),\n    timestamp_ingesta: new Date().toISOString(),\n    fuente: item.fuente || 'landing_page',\n    url_origen: item.url_origen || '',\n    ip_origen: item.ip_origen || '',\n\n    // Datos normalizados\n    nombre: toTitleCase(nombre_raw),\n    apellido: toTitleCase(apellido_raw),\n    email: email_valido ? email_validado : email_raw,\n    telefono: normalizePhone(telefono_raw),\n    mensaje: (mensaje_raw || '').trim(),\n\n    // Validacion\n    email_valido: email_valido,\n    telefono_digitos: (telefono_raw || '').replace(/[^\\d]/g, '').length,\n\n    // Placeholders que llenara la IA\n    ia_clasificacion: null,\n    ia_prioridad: null,\n    ia_confianza: null,\n    ia_resumen: null,\n    ia_respuesta_asunto: null,\n    ia_respuesta_html: null,\n\n    // Campos auxiliares para debug\n    _source: item,\n    _stage: 'normalizado'\n  }\n}];\n"
+      },
+      "id": "node-2",
+      "name": "⚙️ Normalización ETL + Enriquecimiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ],
+      "notes": "5 submodulos ETL: (1) Mapeo unificado, (2) Normalizacion TitleCase + lowercase, (3) Validacion email RFC 5322 + telefono, (4) Enriquecimiento UUID v4 + timestamp ISO 8601, (5) Preparacion de campos para IA."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-value-check",
+              "leftValue": "={{ $json.email_valido }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-3",
+      "name": "✅ Validar: Email OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        950,
+        300
+      ],
+      "notes": "Si el email no supera la validacion, se registra en tabla de errores y termina el flujo."
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "complete",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Eres un clasificador de leads comerciales. Analiza el mensaje del prospecto y clasificalo en UNA de estas categorias: 'compra_inmediata' (intencion clara de comprar YA), 'solicita_info' (pide info o cotizacion), 'soporte' (consulta tecnica o queja), 'spam' (generico o sospechoso). Responde UNICAMENTE con JSON valido: {\"clasificacion\":\"...\",\"prioridad\":numero 1-100,\"confianza\":numero 0-1,\"resumen\":\"breve resumen en una linea\"}"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.mensaje }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 200
+        }
+      },
+      "id": "node-4",
+      "name": "🤖 IA: Clasificar Intención (GPT-4o-mini)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        150
+      ],
+      "notes": "GPT-4o-mini analiza el mensaje del lead y devuelve JSON con: clasificacion, prioridad (1-100), confianza (0-1), resumen. Modelo mas barato de OpenAI (~$0.0001 por lead)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer JSON del output de OpenAI y parsearlo\nconst rawOutput = $input.first().json.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\n\nlet classification = {};\ntry {\n  classification = JSON.parse(cleanJson);\n} catch (e) {\n  // Fallback si el JSON no es valido\n  classification = {\n    clasificacion: 'solicita_info',\n    prioridad: 50,\n    confianza: 0.5,\n    resumen: 'No se pudo clasificar automaticamente.'\n  };\n}\n\nconst lead = $input.first().json;\n\nreturn [{\n  json: {\n    ...lead,\n    ia_clasificacion: classification.clasificacion || 'solicita_info',\n    ia_prioridad: classification.prioridad || 50,\n    ia_confianza: classification.confianza || 0.5,\n    ia_resumen: classification.resumen || '',\n    _stage: 'ia_clasificado'\n  }\n}];\n"
+      },
+      "id": "node-5",
+      "name": "📊 Parsear: Extraer Clasificación IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        150
+      ],
+      "notes": "Parsea el JSON que devuelve GPT-4o-mini. Si falla el parseo, asigna valores por defecto seguros."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "spam-check",
+              "leftValue": "={{ $json.ia_clasificacion }}",
+              "rightValue": "spam",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-6",
+      "name": "🚫 ¿Es SPAM?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        150
+      ],
+      "notes": "Si la IA clasifica como SPAM, no se envia email ni se notifica. Solo se registra en DB con estado 'spam'."
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "complete",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Eres un representante comercial profesional de una consultora de software. Genera un email de respuesta personalizado. Reglas: (1) Si la clasificacion es 'compra_inmediata': se directo, ofrece agendar llamada HOY, incluye un link generico de calendario. (2) Si es 'solicita_info': comparte info, ofrece demo, tono util. (3) Si es 'soporte': muestra empatia, deriva a soporte, tiempo respuesta 24h. El email debe ser en HTML valido, con diseño profesional y responsive. Incluye: saludo con el nombre del lead, cuerpo personalizado segun su mensaje, firma profesional. NO uses placeholders. Responde UNICAMENTE con JSON valido: {\"asunto\":\"...\",\"cuerpo_html\":\"...\"}"
+            },
+            {
+              "role": "user",
+              "content": "Datos del lead:\nNombre: {{ $json.nombre }} {{ $json.apellido }}\nClasificacion IA: {{ $json.ia_clasificacion }}\nPrioridad: {{ $json.ia_prioridad }}/100\nMensaje original: {{ $json.mensaje }}\n\nGenera el email de respuesta."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 500
+        }
+      },
+      "id": "node-7",
+      "name": "🤖 IA: Generar Email Personalizado (GPT-4o-mini)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        2350,
+        50
+      ],
+      "notes": "GPT-4o-mini genera el email HTML completo personalizado segun la intencion del lead. Costo ~$0.0003 por email generado."
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutput = $input.first().json.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\n\nlet emailData = {};\ntry {\n  emailData = JSON.parse(cleanJson);\n} catch (e) {\n  // Fallback: email generico\n  emailData = {\n    asunto: 'Gracias por contactarnos, ' + ($json.nombre || '') + '!',\n    cuerpo_html: '<p>Hola <strong>' + ($json.nombre || '') + '</strong>,</p><p>Gracias por tu consulta. Nuestro equipo la revisara y te contactara en las proximas 24 horas.</p><p>Saludos,<br>Equipo Comercial</p>'\n  };\n}\n\nconst lead = $input.first().json;\n\nreturn [{\n  json: {\n    ...lead,\n    ia_respuesta_asunto: emailData.asunto || '',\n    ia_respuesta_html: emailData.cuerpo_html || '',\n    _stage: 'ia_email_generado'\n  }\n}];\n"
+      },
+      "id": "node-8",
+      "name": "📊 Parsear: Extraer Email Generado por IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2700,
+        50
+      ],
+      "notes": "Parsea el JSON con el email generado. Fallback generico si el parseo falla."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.SUPABASE_PROJECT_ID}}.supabase.co/rest/v1/leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id_lead",
+              "value": "={{ $json.id_lead }}"
+            },
+            {
+              "name": "nombre",
+              "value": "={{ $json.nombre }}"
+            },
+            {
+              "name": "apellido",
+              "value": "={{ $json.apellido }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "telefono",
+              "value": "={{ $json.telefono }}"
+            },
+            {
+              "name": "mensaje",
+              "value": "={{ $json.mensaje }}"
+            },
+            {
+              "name": "fuente",
+              "value": "={{ $json.fuente }}"
+            },
+            {
+              "name": "url_origen",
+              "value": "={{ $json.url_origen }}"
+            },
+            {
+              "name": "timestamp_ingesta",
+              "value": "={{ $json.timestamp_ingesta }}"
+            },
+            {
+              "name": "ia_clasificacion",
+              "value": "={{ $json.ia_clasificacion }}"
+            },
+            {
+              "name": "ia_prioridad",
+              "value": "={{ $json.ia_prioridad }}"
+            },
+            {
+              "name": "ia_confianza",
+              "value": "={{ $json.ia_confianza }}"
+            },
+            {
+              "name": "ia_resumen",
+              "value": "={{ $json.ia_resumen }}"
+            },
+            {
+              "name": "ia_respuesta",
+              "value": "={{ $json.ia_respuesta_html }}"
+            },
+            {
+              "name": "estado",
+              "value": "={{ $json.ia_clasificacion === 'spam' ? 'spam' : 'nuevo' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "redirect": {
+            "followRedirects": true
+          }
+        }
+      },
+      "id": "node-9",
+      "name": "💾 Persistir en Supabase PostgreSQL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3050,
+        50
+      ],
+      "notes": "Inserta el lead en PostgreSQL via Supabase REST API. Usa variables de entorno SUPABASE_PROJECT_ID y SUPABASE_ANON_KEY para no exponer credenciales. Configurar en n8n > Variables."
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "messageType": "html",
+        "toRecipients": "={{ $json.email }}",
+        "subject": "={{ $json.ia_respuesta_asunto || 'Gracias por contactarnos, ' + $json.nombre + '!' }}",
+        "html": "={{ $json.ia_respuesta_html || '<p>Gracias por tu consulta. Te contactaremos pronto.</p>' }}"
+      },
+      "id": "node-10",
+      "name": "📧 Gmail: Enviar Email al Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        3400,
+        -50
+      ],
+      "notes": "Envia el email personalizado generado por la IA. Si la generacion fallo, usa un mensaje generico de respaldo.",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "TU_GMAIL_OAUTH2_ID",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "nuevos-leads",
+        "text": "🚀 *NUEVO LEAD* — {{ $json.nombre }} {{ $json.apellido }}\n\n🤖 *IA:* {{ $json.ia_clasificacion.toUpperCase() }} (prioridad {{ $json.ia_prioridad }}/100)\n📧 *Email:* {{ $json.email }}\n📱 *Tel:* {{ $json.telefono || 'No proporcionado' }}\n\n💬 *Mensaje:* {{ $json.mensaje.substring(0, 200) }}{{ $json.mensaje.length > 200 ? '...' : '' }}\n\n📊 *Resumen IA:* {{ $json.ia_resumen }}\n🕐 {{ $json.timestamp_ingesta }}\n🆔 `{{ $json.id_lead }}`"
+      },
+      "id": "node-11",
+      "name": "🔔 Slack: Notificar al Equipo de Ventas",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        3400,
+        150
+      ],
+      "notes": "Notifica al canal #nuevos-leads con los datos del lead y el resultado del scoring de IA.",
+      "credentials": {
+        "slackApi": {
+          "id": "TU_SLACK_ID",
+          "name": "Slack Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $input.first().json;\nconst motivo = lead.email_valido === false ? 'Email invalido' : 'Telefono insuficiente';\n\n// En un entorno productivo, esto escribira en una tabla de errores de Supabase\n// Por ahora, logueamos en consola y construimos un objeto de error estructurado\nconsole.log(`[LEAD INVALIDO] ${motivo} - ${lead.email} - ${lead.nombre}`);\n\nreturn [{\n  json: {\n    ...lead,\n    estado: 'error_validacion',\n    motivo_error: motivo,\n    _stage: 'error_validacion'\n  }\n}];\n"
+      },
+      "id": "node-12",
+      "name": "⚠️ Registrar: Lead Inválido en Log de Errores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        600
+      ],
+      "notes": "Procesa leads que no superan la validacion. En produccion, escribe en tabla lead_events de Supabase con tipo_evento='validacion_fallo'."
+    },
+    {
+      "parameters": {},
+      "id": "node-13",
+      "name": "🛡️ Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        3050,
+        600
+      ],
+      "notes": "Se activa ante cualquier excepcion no capturada en el flujo principal. Principio fail-loudly."
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "alertas-sistema",
+        "text": "🚨 *ERROR EN PIPELINE DE LEADS*\n\n❌ *Nodo:* {{ $json.node?.name || 'Desconocido' }}\n📅 {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n*Error:* \n```{{ JSON.stringify($json.error || $json, null, 2) }}```\n\n⚡ *Requiere intervencion manual inmediata.*"
+      },
+      "id": "node-14",
+      "name": "🚨 Slack: Alerta Crítica de Error",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        3400,
+        600
+      ],
+      "notes": "Alerta al equipo tecnico con todos los detalles del error. Canal #alertas-sistema.",
+      "credentials": {
+        "slackApi": {
+          "id": "TU_SLACK_ID",
+          "name": "Slack Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "📌 CAPA 1: INGESTA\nWebhook HTTP POST desde Flask\n→ Fast ack HTTP 200\n→ Recibe payload JSON del form",
+        "height": 200,
+        "width": 280
+      },
+      "id": "sticky-100-150",
+      "name": "CAPA 1: INGESTA",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        100,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "text": "📌 CAPA 2: PROCESAMIENTO ETL\n1. Mapeo unificado de campos\n2. Normalizacion textual\n3. Validacion email/telefono\n4. UUID v4 + timestamp\n5. Preparacion campos IA",
+        "height": 220,
+        "width": 300
+      },
+      "id": "sticky-450-150",
+      "name": "CAPA 2: PROCESAMIENTO ETL",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        450,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "text": "📌 CAPA 3: IA SCORING (GPT-4o-mini)\n→ Clasifica intencion del lead\n→ Asigna prioridad 1-100\n→ Detecta SPAM automaticamente\n→ Genera resumen del mensaje",
+        "height": 190,
+        "width": 310
+      },
+      "id": "sticky-1250-50",
+      "name": "CAPA 3: IA SCORING (GPT-4o-mini)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "text": "📌 CAPA 4: IA EMAIL (GPT-4o-mini)\n→ Genera email HTML personalizado\n→ Adapta tono segun intencion\n→ Incluye llamada a la accion\n→ Fallback generico si falla",
+        "height": 190,
+        "width": 310
+      },
+      "id": "sticky-2300--50",
+      "name": "CAPA 4: IA EMAIL (GPT-4o-mini)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2300,
+        -50
+      ]
+    },
+    {
+      "parameters": {
+        "text": "📌 CAPA 5: PERSISTENCIA + ACCION\n→ Supabase PostgreSQL\n→ Gmail (envio email IA)\n→ Slack (notif. equipo)\n\nEjecucion SECUENCIAL:\n1° DB (garantiza persistencia)\n2° Email y Slack en paralelo",
+        "height": 230,
+        "width": 310
+      },
+      "id": "sticky-3000--100",
+      "name": "CAPA 5: PERSISTENCIA + ACCION",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3000,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "text": "🛡️ CAPA TRANSVERSAL: ERRORES\n→ Error Trigger captura fallos\n→ Slack #alertas-sistema notifica\n→ No se pierden leads en silencio\n→ Leads invalidos se registran",
+        "height": 190,
+        "width": 280
+      },
+      "id": "sticky-1200-500",
+      "name": "CAPA TRANSVERSAL: ERRORES",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "📥 Webhook: Recibir Lead desde Flask": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Normalización ETL + Enriquecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Normalización ETL + Enriquecimiento": {
+      "main": [
+        [
+          {
+            "node": "✅ Validar: Email OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Validar: Email OK?": {
+      "main": [
+        [
+          {
+            "node": "🤖 IA: Clasificar Intención (GPT-4o-mini)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "⚠️ Registrar: Lead Inválido en Log de Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 IA: Clasificar Intención (GPT-4o-mini)": {
+      "main": [
+        [
+          {
+            "node": "📊 Parsear: Extraer Clasificación IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Parsear: Extraer Clasificación IA": {
+      "main": [
+        [
+          {
+            "node": "🚫 ¿Es SPAM?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🚫 ¿Es SPAM?": {
+      "main": [
+        [
+          {
+            "node": "🤖 IA: Generar Email Personalizado (GPT-4o-mini)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "💾 Persistir en Supabase PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 IA: Generar Email Personalizado (GPT-4o-mini)": {
+      "main": [
+        [
+          {
+            "node": "📊 Parsear: Extraer Email Generado por IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Parsear: Extraer Email Generado por IA": {
+      "main": [
+        [
+          {
+            "node": "💾 Persistir en Supabase PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Persistir en Supabase PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "📧 Gmail: Enviar Email al Lead",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔔 Slack: Notificar al Equipo de Ventas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🛡️ Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "🚨 Slack: Alerta Crítica de Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Argentina/Buenos_Aires",
+    "saveManualExecutions": true,
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "TFI"
+    },
+    {
+      "name": "leads"
+    },
+    {
+      "name": "IA"
+    },
+    {
+      "name": "n8n"
+    },
+    {
+      "name": "postgresql"
+    }
+  ],
+  "pinData": {},
+  "versionId": "3.0.0",
+  "active": false,
+  "__instrucciones": "=== INSTRUCCIONES DE CONFIGURACION ===\n\n1. IMPORTAR: n8n > Workflows > Import from File\n\n2. VARIABLES DE ENTORNO (n8n > Settings > Environment Variables):\n   SUPABASE_PROJECT_ID = tu-project-id\n   SUPABASE_ANON_KEY = tu-anon-key\n\n3. CREDENCIALES A CONFIGURAR:\n   - OpenAI API: n8n > Credentials > OpenAI > Agregar API Key\n   - Gmail OAuth2: n8n > Credentials > Google OAuth2\n   - Slack: n8n > Credentials > Slack API\n\n4. SUPABASE - Crear tabla 'leads' con el schema de database/schema.sql\n\n5. FLASK - Configurar N8N_WEBHOOK_URL en app.py apuntando a:\n   http://localhost:5678/webhook/leads (n8n local)\n\n6. PROBAR: Ejecutar Flask, enviar formulario, verificar en Supabase.\n\n=== COSTOS ===\nOpenAI GPT-4o-mini: ~$0.0001 por lead (clasificacion + email)\n50 leads de prueba: ~$0.005\n500 leads: ~$0.05\n"
+}

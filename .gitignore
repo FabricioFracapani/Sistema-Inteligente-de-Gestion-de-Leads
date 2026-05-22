@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Flask
+instance/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment & secrets
+.env
+.env.local
+*.pem
+*.key
+credentials*.json
+service-account*.json
+
+# Logs
+*.log
+leads_fallback.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Test outputs
+resultados_pruebas.csv
+resultados_pruebas.json
+
+# Docker
+docker-compose.override.yml
+
+# Node (por si acaso)
+node_modules/
+package-lock.json
+
+# n8n
+.n8n/

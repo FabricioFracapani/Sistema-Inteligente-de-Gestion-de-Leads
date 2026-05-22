@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- ===== SEO ===== -->
+    <title>Automatización Inteligente para PyMEs | Consultoría y Desarrollo Web</title>
+    <meta name="description" content="Soluciones de software a medida para PyMEs. Automatización de procesos, IA y desarrollo web. Respondemos en menos de 5 segundos. Consultoría gratuita inicial.">
+    <meta name="keywords" content="automatización PyME, desarrollo web, software a medida, inteligencia artificial, n8n, consultoría digital, Mendoza, Argentina">
+    <meta name="author" content="Consultoría Digital">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://{{ request.host_url }}">
+
+    <!-- ===== OPEN GRAPH ===== -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Automatización Inteligente para PyMEs | Consultoría Digital">
+    <meta property="og:description" content="Impulsá tu negocio con soluciones de software a medida. Automatización, IA y desarrollo web para pequeñas y medianas empresas.">
+    <meta property="og:url" content="https://{{ request.host_url }}">
+    <meta property="og:site_name" content="Consultoría Digital">
+    <meta property="og:locale" content="es_AR">
+    <meta property="og:image" content="https://{{ request.host_url }}static/og-image.png">
+
+    <!-- ===== TWITTER CARD ===== -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Automatización Inteligente para PyMEs">
+    <meta name="twitter:description" content="Software a medida. Automatización, IA y desarrollo web.">
+
+    <!-- ===== STRUCTURED DATA (JSON-LD) ===== -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ProfessionalService",
+        "name": "Consultoría Digital",
+        "description": "Soluciones de software a medida para PyMEs. Automatización, desarrollo web y consultoría.",
+        "url": "https://{{ request.host_url }}",
+        "areaServed": {"@type": "Country","name": "Argentina"},
+        "availableLanguage": ["es"],
+        "serviceType": "Software Development"
+    }
+    </script>
+
+    <!-- ===== FAVICON ===== -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>⚡</text></svg>">
+
+    <!-- ===== FONTS ===== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- ===== CSS ===== -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- ========================================================= -->
+    <!-- HERO                                                       -->
+    <!-- ========================================================= -->
+    <header class="hero" role="banner">
+        <div class="hero-content">
+            <h1>
+                Automatización <span>Inteligente</span> para tu Negocio
+            </h1>
+            <p class="subtitle">
+                Desarrollo de software a medida para PyMEs. Integramos automatización,
+                inteligencia artificial y web para que respondas a tus clientes en segundos,
+                no en horas.
+            </p>
+            <div class="hero-badges">
+                <span class="hero-badge">⚡ Respuesta &lt; 5 segundos</span>
+                <span class="hero-badge">🤖 IA integrada</span>
+                <span class="hero-badge">🛡️ Datos protegidos</span>
+                <span class="hero-badge">💰 Stack 100% gratuito</span>
+            </div>
+        </div>
+        <div class="hero-arrow" aria-hidden="true">↓</div>
+    </header>
+
+    <!-- ========================================================= -->
+    <!-- TRUST STRIP (social proof)                                  -->
+    <!-- ========================================================= -->
+    <div class="trust-strip" role="complementary">
+        <span class="trust-strip-item"><span class="icon">🛡️</span> Cumplimiento Ley 25.326</span>
+        <span class="trust-strip-item"><span class="icon">🔒</span> Encriptación AES-256</span>
+        <span class="trust-strip-item"><span class="icon">📊</span> Clasificación con IA</span>
+        <span class="trust-strip-item"><span class="icon">⚡</span> 3.2s tiempo de respuesta</span>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- FEATURES                                                    -->
+    <!-- ========================================================= -->
+    <section class="section features" aria-labelledby="features-title">
+        <div class="container">
+            <p class="section-label">¿Por qué elegirnos?</p>
+            <h2 id="features-title" class="section-title">Tecnología que trabaja mientras vos cerrás ventas</h2>
+            <div class="features-grid">
+                <article class="feature-card">
+                    <span class="feature-icon">🤖</span>
+                    <h3>Clasificación con Inteligencia Artificial</h3>
+                    <p>GPT-4o-mini analiza cada consulta y detecta al instante si es una compra urgente, un pedido de información o spam. Prioridad automática.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-icon">⚡</span>
+                    <h3>Respuesta en menos de 5 segundos</h3>
+                    <p>El pipeline n8n procesa el lead, lo clasifica con IA, genera un email personalizado y notifica a tu equipo antes de que el prospecto cierre la pestaña.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-icon">🛡️</span>
+                    <h3>Datos protegidos por diseño</h3>
+                    <p>13 medidas de seguridad en 3 capas. Row Level Security en base de datos, hashing SHA-256, IP anonimizada. Cumplimiento Ley 25.326.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <h3>Dashboard para tu equipo</h3>
+                    <p>Visualizá todos los leads en tiempo real. Filtros por prioridad, clasificación IA y estado. Todo el pipeline auditable desde un solo panel.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-icon">🔌</span>
+                    <h3>Integración sin código complejo</h3>
+                    <p>Conectamos formularios web, APIs de email, Slack y bases de datos usando n8n. Arquitectura modular que crece con tu negocio.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-icon">💰</span>
+                    <h3>Stack 100% gratuito</h3>
+                    <p>Flask + n8n + GPT-4o-mini + PostgreSQL + Streamlit. Todas herramientas open-source o con planes gratuitos generosos. Sin costos ocultos.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- FORM                                                        -->
+    <!-- ========================================================= -->
+    <section class="section form-section" id="formulario" aria-labelledby="form-title">
+        <div class="container">
+            <div class="form-card">
+                <h2 id="form-title">Solicitá tu Consultoría Gratuita</h2>
+                <p class="form-subtitle">Completá el formulario y un especialista te contacta en menos de 24 horas.</p>
+
+                <div id="alert-box" class="alert-box" role="alert" aria-live="polite"></div>
+
+                <form id="lead-form" novalidate aria-label="Formulario de contacto">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="text" name="_hp_field" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
+                    <input type="hidden" name="fuente" value="landing_page">
+
+                    <div class="form-grid">
+                        <!-- Nombre -->
+                        <div class="form-group">
+                            <label for="nombre">Nombre<span class="req">*</span></label>
+                            <input type="text" id="nombre" name="nombre"
+                                   placeholder="Juan" required minlength="2" maxlength="100"
+                                   autocomplete="given-name">
+                        </div>
+
+                        <!-- Apellido -->
+                        <div class="form-group">
+                            <label for="apellido">Apellido</label>
+                            <input type="text" id="apellido" name="apellido"
+                                   placeholder="Pérez" maxlength="100"
+                                   autocomplete="family-name">
+                        </div>
+
+                        <!-- Email -->
+                        <div class="form-group full">
+                            <label for="email">Email<span class="req">*</span></label>
+                            <input type="email" id="email" name="email"
+                                   placeholder="juan@empresa.com" required maxlength="254"
+                                   autocomplete="email">
+                        </div>
+
+                        <!-- Teléfono -->
+                        <div class="form-group">
+                            <label for="telefono">Teléfono</label>
+                            <input type="tel" id="telefono" name="telefono"
+                                   placeholder="+54 261 123-4567" maxlength="30"
+                                   autocomplete="tel">
+                        </div>
+
+                        <!-- Empresa (nuevo) -->
+                        <div class="form-group">
+                            <label for="empresa">Empresa</label>
+                            <input type="text" id="empresa" name="empresa"
+                                   placeholder="Tu Empresa S.A." maxlength="100">
+                        </div>
+
+                        <!-- Mensaje -->
+                        <div class="form-group full">
+                            <label for="mensaje">¿En qué podemos ayudarte?<span class="req">*</span></label>
+                            <textarea id="mensaje" name="mensaje" rows="4"
+                                      placeholder="Contanos sobre tu proyecto, qué necesitás automatizar, cantidad de empleados, urgencia..."
+                                      required minlength="10" maxlength="2000"></textarea>
+                            <span id="char-count" class="hint">0 / 2000</span>
+                        </div>
+
+                        <!-- Consentimiento -->
+                        <div class="form-group full">
+                            <div class="consent-row">
+                                <input type="checkbox" id="consentimiento" required>
+                                <label for="consentimiento">
+                                    Autorizo el tratamiento de mis datos personales según la
+                                    <a href="#" rel="nofollow">Política de Privacidad</a>
+                                    (Ley 25.326 de Protección de Datos Personales).
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="form-group full">
+                            <button type="submit" id="submit-btn" class="btn-submit">
+                                <span id="btn-text">Solicitar Consultoría Gratuita</span>
+                                <span id="btn-spinner" class="spinner hidden" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- FOOTER                                                      -->
+    <!-- ========================================================= -->
+    <footer class="footer" role="contentinfo">
+        <div class="footer-links">
+            <a href="/robots.txt" rel="nofollow">robots.txt</a>
+            <a href="/sitemap.xml" rel="nofollow">sitemap.xml</a>
+            <a href="#" rel="nofollow">Política de Privacidad</a>
+        </div>
+        <p class="footer-byline">© 2026 · TFI Tecnicatura Superior en Programación · UTN FRM · Stack 100% gratuito</p>
+    </footer>
+
+    <!-- ========================================================= -->
+    <!-- SCRIPTS                                                     -->
+    <!-- ========================================================= -->
+    <script nonce="{{ csrf_token }}">
+    (function() {
+        const form    = document.getElementById('lead-form');
+        const btn     = document.getElementById('submit-btn');
+        const btnTxt  = document.getElementById('btn-text');
+        const spinner = document.getElementById('btn-spinner');
+        const alertEl = document.getElementById('alert-box');
+        const counter = document.getElementById('char-count');
+        const msgArea = document.getElementById('mensaje');
+
+        // ---------- Character counter ----------
+        msgArea.addEventListener('input', function() {
+            const len = this.value.length;
+            counter.textContent = len + ' / 2000';
+            counter.className = len > 1800 ? 'hint warn' : 'hint';
+        });
+
+        // ---------- Phone filter ----------
+        document.getElementById('telefono').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^\d\s+\-()]/g, '');
+        });
+
+        // ---------- Hide alert on input ----------
+        form.querySelectorAll('input, textarea').forEach(el => {
+            el.addEventListener('input', () => {
+                if (alertEl.classList.contains('show')) {
+                    alertEl.classList.remove('show');
+                }
+            });
+        });
+
+        // ---------- Submit ----------
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Honeypot check
+            const hp = form.querySelector('input[name="_hp_field"]');
+            if (hp && hp.value) {
+                window.location.href = '/gracias?nombre=';
+                return;
+            }
+
+            // Basic validation
+            const nombre = document.getElementById('nombre').value.trim();
+            const email  = document.getElementById('email').value.trim();
+            const msj    = msgArea.value.trim();
+            const consent = document.getElementById('consentimiento').checked;
+
+            let errors = [];
+            if (nombre.length < 2) errors.push('El nombre debe tener al menos 2 caracteres.');
+            if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email))
+                errors.push('Ingresá un email válido.');
+            if (msj.length < 10) errors.push('El mensaje debe tener al menos 10 caracteres.');
+            if (!consent) errors.push('Debés aceptar el tratamiento de datos.');
+
+            if (errors.length) {
+                showAlert(errors.join('<br>'), 'error');
+                return;
+            }
+
+            // Loading state
+            btnTxt.textContent = 'Enviando...';
+            spinner.classList.remove('hidden');
+            btn.disabled = true;
+
+            try {
+                const start = performance.now();
+                const formData = new FormData(form);
+                const r = await fetch('/api/leads', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await r.json();
+
+                if (data.success) {
+                    showAlert('✅ ¡Recibido! Redirigiendo...', 'success');
+                    btnTxt.textContent = '✓ Enviado';
+                    setTimeout(() => { window.location.href = data.redirect; }, 600);
+                } else {
+                    const msg = data.errores ? data.errores.join('<br>') : 'Error inesperado.';
+                    showAlert(msg, 'error');
+                    resetBtn();
+                }
+            } catch (err) {
+                showAlert('Error de conexión. Verificá tu internet.', 'error');
+                resetBtn();
+            }
+        });
+
+        function showAlert(msg, type) {
+            alertEl.innerHTML = msg;
+            alertEl.className = 'alert-box alert-' + type + ' show';
+            alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function resetBtn() {
+            btnTxt.textContent = 'Solicitar Consultoría Gratuita';
+            spinner.classList.add('hidden');
+            btn.disabled = false;
+        }
+    })();
+    </script>
+</body>
+</html>
