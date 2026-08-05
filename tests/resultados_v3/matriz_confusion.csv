@@ -1,0 +1,5 @@
+Real \ Predicho,compra_inmediata,solicita_info,soporte,spam,Total
+compra_inmediata,17,0,2,1,20
+solicita_info,1,22,1,1,25
+soporte,1,1,8,0,10
+spam,0,0,0,10,10

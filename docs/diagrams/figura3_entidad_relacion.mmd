@@ -1,0 +1,61 @@
+erDiagram
+    leads {
+        uuid id_lead PK
+        varchar nombre "100 chars, NOT NULL"
+        varchar apellido "100 chars"
+        varchar email "255 chars, NOT NULL"
+        varchar email_hash "SHA-256 hash"
+        varchar telefono "30 chars"
+        varchar telefono_hash "SHA-256 hash"
+        text mensaje "Contenido del formulario"
+        varchar fuente "landing_page default"
+        varchar url_origen "500 chars"
+        inet ip_origen "anonimizado /16"
+        text user_agent
+        timestamptz timestamp_ingesta
+        varchar ia_clasificacion "compra_inmediata, solicita_info, soporte, spam"
+        integer ia_prioridad "1-100 CHECK"
+        decimal ia_confianza "0-1 precision 3"
+        text ia_resumen "Resumen IA en una linea"
+        text ia_respuesta "Email HTML generado por IA"
+        varchar estado "nuevo, contactado, en_negociacion, ganado, perdido, spam"
+        varchar responsable "Vendedor asignado"
+        text notas_internas
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    lead_events {
+        uuid id_evento PK
+        uuid id_lead FK
+        varchar tipo_evento "webhook_recibido, validacion_ok, validacion_fallo, ia_clasificacion, email_enviado, email_error, slack_notificado, error_pipeline, lead_insertado"
+        jsonb detalle "Payload completo del evento"
+        varchar nodo_origen "Nodo n8n que genero el evento"
+        decimal lrt_segundos "Lead Response Time acumulado"
+        varchar ejecucion_id "ID de ejecucion n8n"
+        timestamptz created_at
+    }
+
+    ia_config {
+        serial id_config PK
+        varchar nombre "Identificador unico del prompt"
+        text system_prompt "Prompt de sistema para GPT-4o-mini"
+        varchar modelo "gpt-4o-mini default"
+        decimal temperature "0.0-1.0, default 0.3"
+        integer max_tokens "default 150"
+        boolean activo
+        timestamptz updated_at
+    }
+
+    api_keys {
+        uuid id_key PK
+        varchar servicio "n8n, dashboard, flask"
+        varchar clave_hash "SHA-256 de la clave real"
+        varchar descripcion "Proposito de la clave"
+        boolean activo
+        timestamptz ultimo_uso
+        timestamptz created_at
+        timestamptz expires_at
+    }
+
+    leads ||--o{ lead_events : "genera (FK id_lead)"

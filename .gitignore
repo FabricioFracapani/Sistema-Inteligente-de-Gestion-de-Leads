@@ -49,6 +49,7 @@ leads_fallback.log
 # Test outputs
 resultados_pruebas.csv
 resultados_pruebas.json
+resultados_v2/
 
 # Docker
 docker-compose.override.yml

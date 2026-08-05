@@ -1,0 +1,19 @@
+Tabla 6
+Metricas de ejecucion del pipeline con 100 casos de prueba
+
+Las metricas se presentan con su universo de medicion correspondiente:
+
+Metrica                                  Valor                Universo / Nota                         
+----------------------------------------------------------------------------------------------------
+Casos totales enviados                   100                  CP-01 a CP-12                           
+Casos validos (HTTP 200)                 90                   100 - 10 invalidos CP-03/04             
+Casos con pipeline completo (email)      80                   90 - 10 spam CP-08                      
+LRT Flask promedio (fast ack)            3.2 s                Medido desde cliente HTTP               
+LRT Pipeline promedio (n8n completo)     4.3 s                Medido desde logs de n8n                
+Casos con LRT Flask < 8s                 90/90 (100%)         Umbral de hipotesis                     
+Casos con LRT Flask < 5s                 90/90 (100%)         Umbral de referencia                    
+Tasa de persistencia exitosa             100.0%               90/90                                   
+Eventos perdidos sin registro            0                    Verificado con OE7                      
+----------------------------------------------------------------------------------------------------
+
+Nota. LRT Flask mide el tiempo de respuesta HTTP del servidor Flask (fast acknowledgement). LRT Pipeline mide el tiempo total del workflow n8n desde la recepcion del webhook hasta la persistencia en PostgreSQL. Ambas metricas son complementarias y reflejan dos momentos distintos del procesamiento. Fuente: elaboracion propia.
