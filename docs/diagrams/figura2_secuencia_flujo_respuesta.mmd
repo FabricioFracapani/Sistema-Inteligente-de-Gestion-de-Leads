@@ -1,0 +1,67 @@
+sequenceDiagram
+    actor U as Usuario
+    participant F as Flask Landing Page
+    participant N as n8n Webhook
+    participant ETL as n8n ETL Node
+    participant IA as GPT-4o-mini (IA)
+    participant DB as Supabase PostgreSQL
+    participant EXT as Gmail + Slack
+    participant ERR as Error Trigger
+
+    Note over U,F: CAPA 1: Captura Web
+
+    U->>F: GET / (formulario HTML)
+    F-->>U: HTML + CSRF token + 13 security headers
+
+    U->>F: POST /api/leads (datos + CSRF)
+    F->>F: Validar CSRF + email + sanitizar
+
+    alt Datos invalidos
+        F-->>U: HTTP 400 + errores de validacion
+    else Datos validos
+        Note over F,N: CAPA 2: Ingesta (fast ack)
+        F->>N: POST JSON (lead normalizado)
+        N-->>F: HTTP 200 (respuesta inmediata)
+        F-->>U: HTTP 200 + redirect /gracias
+
+        Note over N,ETL: CAPA 3: Procesamiento ETL
+        N->>ETL: Payload JSON
+        ETL->>ETL: Normalizar, validar, UUID v4, ISO 8601
+
+        alt Email invalido
+            ETL->>ERR: Registrar error de validacion
+            ERR->>EXT: Alerta #alertas-sistema
+        else Email valido
+            Note over ETL,IA: CAPA 4: IA Scoring
+            ETL->>IA: Mensaje del lead
+            IA->>IA: Clasificar intencion y asignar prioridad
+            IA-->>ETL: JSON: {clasificacion, prioridad, confianza, resumen}
+
+            alt Clasificado como SPAM
+                ETL->>DB: INSERT lead (estado=spam)
+                Note over DB: Sin email, sin notificacion Slack
+            else Lead legitimo
+                Note over ETL,IA: CAPA 5: IA Email Generation
+                ETL->>IA: Datos del lead + clasificacion
+                IA->>IA: Generar email HTML personalizado
+                IA-->>ETL: JSON: {asunto, cuerpo_html}
+
+                Note over ETL,DB: CAPA 6: Persistencia + Accion
+                ETL->>DB: INSERT lead (todos los campos + IA)
+                DB->>DB: Trigger: auto-hash PII y anonimizar IP
+                DB->>DB: RLS: verificar permisos
+                DB-->>ETL: Lead persistido
+
+                par Acciones post-persistencia
+                    ETL->>EXT: Enviar email HTML al lead (Gmail)
+                and
+                    ETL->>EXT: Notificar #nuevos-leads (Slack)
+                end
+            end
+        end
+    end
+
+    Note over DB,ERR: CAPA TRANSVERSAL: Errores (fail-loudly)
+    opt Error en cualquier etapa del pipeline
+        ERR->>EXT: Alerta critica #alertas-sistema
+    end

@@ -1,0 +1,23 @@
+========================================================================
+TABLA COMPLETA DE LAS 50 PRUEBAS (CP-01 a CP-10)
+========================================================================
+
+Caso         Categoría                 n Descripción                                                  Resultado esperado
+----------------------------------------------------------------------------------------------------------------------------------
+CP-01        compra_inmediata         10 Mensajes con intención clara de compra/contratación inmediata HTTP 200, clasificación esperada: compra_inmediata
+CP-02        solicita_info            15 Mensajes solicitando información, cotización o demo          HTTP 200, clasificación esperada: solicita_info
+CP-03        email_invalido            3 Emails con formato inválido (sin @, sin dominio, vacío)      HTTP 400 (Flask rechaza, no llega a n8n)
+CP-04        telefono_invalido         2 Teléfonos con formato inválido (muy corto, con letras)       HTTP 400 (Flask rechaza, no llega a n8n)
+CP-05        duplicado                 5 Mismo email enviado 5 veces (prueba de duplicados)           HTTP 200 (Flask acepta, n8n decide manejo)
+CP-06/07     soporte                   5 Mensajes de soporte técnico, quejas o problemas              HTTP 200, clasificación esperada: soporte
+CP-08        spam                      5 Mensajes de spam genérico o sospechoso                       HTTP 200, clasificación esperada: spam, sin email
+CP-09        caracteres_especiales     3 Nombres y mensajes con tildes, ñ, ç, acentos franceses y portugueses HTTP 200, verificar normalización ETL
+CP-10        mensajes_borde            2 Mensaje muy largo (~280 palabras) y mensaje muy corto ('Info') HTTP 200, verificar manejo de extremos
+----------------------------------------------------------------------------------------------------------------------------------
+TOTAL                                 50
+
+NOTA: Los resultados individuales de cada caso (LRT Flask, status HTTP,
+clasificación IA obtenida) se registran en el archivo CSV generado por
+test_50_leads_v2.py. La tabla anterior describe la estructura de los casos.
+
+Documento generado: 2026-08-05 19:42:33 UTC

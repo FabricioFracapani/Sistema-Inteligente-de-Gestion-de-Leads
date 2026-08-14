@@ -1,0 +1,93 @@
+========================================================================
+ANEXO J — VERIFICACIÓN DE SEGURIDAD
+========================================================================
+
+1. MEDIDAS DE SEGURIDAD IMPLEMENTADAS (13 controles)
+------------------------------------------------------------
+  [CSP  ] Content-Security-Policy             — Restringe fuentes de scripts, estilos e imágenes
+  [HSTS ] Strict-Transport-Security           — Fuerza HTTPS (activado solo en producción)
+  [XFO  ] X-Frame-Options: DENY               — Previene clickjacking
+  [CTO  ] X-Content-Type-Options: nosniff     — Evita MIME-type sniffing
+  [RP   ] Referrer-Policy                     — Controla información de referrer en navegación
+  [PP   ] Permissions-Policy                  — Deshabilita APIs innecesarias del navegador
+  [COOP ] Cross-Origin-Opener-Policy          — Aísla el contexto de navegación
+  [CORS ] Cross-Origin Resource Sharing       — Restringe acceso a orígenes autorizados
+  [RL   ] Rate Limiting                       — 60 req/min por IP en /api/leads
+  [CSRF ] CSRF Token                          — Token por sesión + SameSite=Strict
+  [SAN  ] Input Sanitization                  — Strip HTML, caracteres de control, límites de longitud
+  [VAL  ] Validación server-side              — Email RFC 5322, nombre >= 2 chars, teléfono >= 7 dígitos
+  [HON  ] Honeypot anti-spam                  — Campo oculto _hp_field para detectar bots
+
+2. CAPA DE DATOS — ROW LEVEL SECURITY (Supabase PostgreSQL)
+------------------------------------------------------------
+  Roles definidos: anon, authenticated, service_role
+  Políticas RLS: 11 políticas en 4 tablas
+
+  Tabla leads:
+    - anon: solo INSERT (formulario landing page)
+    - authenticated: SELECT + UPDATE (dashboard y ventas)
+    - service_role: bypass total (pipeline n8n)
+
+  Tabla lead_events:
+    - authenticated: SELECT (consulta de trazabilidad)
+    - append-only: sin políticas UPDATE ni DELETE
+
+  Hashing de PII:
+    - SHA-256 de email y teléfono para búsqueda interna
+    - ATENCIÓN: SHA-256 sin salt NO constituye anonimización
+      criptográfica. Funciona como campo auxiliar de búsqueda.
+    - Los datos originales (email, teléfono) se conservan en la tabla
+      para el funcionamiento del sistema (envío de emails).
+    - IP anonimizada mediante máscara /16 (IPv4) o /48 (IPv6)
+
+3. ANÁLISIS DE BRECHAS — LEY 25.326 (Protección de Datos Personales)
+------------------------------------------------------------
+
+  Consentimiento del titular:
+  El sistema NO implementa un mecanismo explícito de consentimiento informado en el formulario (checkbox de aceptación de política de privacidad). Estado: PENDIENTE.
+  Recomendación: Agregar checkbox 'Acepto la política de privacidad' con enlace al documento de política.
+
+  Información al titular (art. 6):
+  El sistema NO informa al titular sobre la finalidad de la recolección, el destinatario de los datos ni la existencia del banco de datos. Estado: PENDIENTE.
+  Recomendación: Agregar texto informativo en el formulario y una página de política de privacidad accesible desde el footer.
+
+  Transferencia internacional (art. 12):
+  Los datos del lead (nombre, email, teléfono, mensaje) se transmiten a OpenAI (EE.UU.) para su procesamiento por GPT-4o-mini. OpenAI actúa como procesador de datos bajo sus términos de API (los datos no se usan para entrenamiento en la API). Estado: PARCIALMENTE CUBIERTO. Se recomienda declarar explícitamente esta transferencia al titular.
+  Recomendación: Incluir en la política de privacidad: 'Utilizamos OpenAI API (EE.UU.) para procesar tu consulta. OpenAI no utiliza estos datos para entrenar sus modelos. Consultá https://openai.com/policies/privacy'.
+
+  Medidas de seguridad (art. 9):
+  Las 13 medidas de seguridad implementadas (CSP, HSTS, CSRF, RLS, rate limiting, sanitization) cubren los riesgos técnicos principales. Estado: CUBIERTO a nivel de diseño. No se realizó auditoría externa.
+  Recomendación: N/A — las medidas están implementadas. Documentar cada control con evidencia de su configuración.
+
+  Deber de confidencialidad (art. 10):
+  El logging del sistema aplica SHA-256 y anonimización de IP. Las credenciales se almacenan en variables de entorno y credential store cifrado. Estado: CUBIERTO.
+  Recomendación: N/A.
+
+4. VERIFICACIÓN DE HEADERS DE SEGURIDAD
+------------------------------------------------------------
+  Validación realizada con el endpoint /health de Flask:
+  GET /health -> 200 OK
+  {
+    "status": "ok",
+    "security_headers": true,
+    "rate_limiting": true,
+    "csrf_enabled": true
+  }
+
+  NOTA: HSTS y cookies Secure requieren HTTPS para ser efectivos.
+  En entorno localhost sin TLS, estos controles están configurados
+  pero no ejercen su función protectora. La validación completa
+  requiere despliegue con certificado SSL/TLS.
+
+5. CONCLUSIÓN
+------------------------------------------------------------
+  El sistema implementa 13 controles de seguridad a nivel de aplicación,
+  11 políticas RLS en base de datos, y medidas de protección de datos
+  (hashing, anonimización de IP, logging sin PII). Sin embargo, NO puede
+  afirmarse cumplimiento pleno de la Ley 25.326 debido a las brechas
+  identificadas en consentimiento e información al titular. Estas brechas
+  son subsanables y constituyen trabajo futuro inmediato para un despliegue
+  en producción.
+
+Documento generado: 2026-08-05 19:42:33 UTC
+Fuente: landing_page/app.py, database/schema.sql, Ley 25.326

@@ -1,0 +1,12 @@
+Tabla 15
+Resultados de las pruebas de inyeccion de fallos para validacion de OE7
+
+Caso       Tipo de fallo                  Error Trigger   Slack      Backup     Resultado      
+-----------------------------------------------------------------------------------------------
+CF-01      n8n inalcanzable (timeout)     N/A (no llega a n8n) N/A        Si         Degradacion OK 
+CF-02      n8n inalcanzable (retry)       N/A (no llega a n8n) N/A        Si         Degradacion OK 
+CF-03      Credencial Supabase invalida   Activado        Si         Si         Fail-loudly OK 
+CF-04      API Key OpenAI invalida        Activado        Si         N/A        Fail-loudly OK 
+-----------------------------------------------------------------------------------------------
+
+Nota. CF-01 y CF-02 validan la resiliencia de Flask cuando n8n no esta disponible: el servidor responde con HTTP 502/504 y persiste el lead en leads_fallback.log. CF-03 y CF-04 validan el mecanismo de fail-loudly del pipeline n8n: el Error Trigger se activa ante cualquier excepcion no capturada y envia una alerta al canal #alertas-sistema de Slack con el detalle del error. Los cuatro casos confirman que ningun evento se pierde sin registro. Fuente: elaboracion propia.

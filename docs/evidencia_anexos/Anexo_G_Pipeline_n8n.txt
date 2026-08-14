@@ -1,0 +1,159 @@
+========================================================================
+ANEXO G — EVIDENCIA DEL PIPELINE DE AUTOMATIZACIÓN (n8n)
+========================================================================
+Workflow: Pipeline de Leads con IA - TFI UTN FRM v3
+Versión: 3.0.0
+Total nodos: 20
+Timezone: America/Argentina/Buenos_Aires
+
+CAPAS DEL WORKFLOW:
+--------------------------------------------------
+  CAPA 1: INGESTA
+    📌 CAPA 1: INGESTA
+    Webhook HTTP POST desde Flask
+    → Fast ack HTTP 200
+    → Recibe payload JSON del form
+  CAPA 2: PROCESAMIENTO ETL
+    📌 CAPA 2: PROCESAMIENTO ETL
+    1. Mapeo unificado de campos
+    2. Normalizacion textual
+    3. Validacion email/telefono
+    4. UUID v4 + timestamp
+    5. Preparacion campos IA
+  CAPA 3: IA SCORING (GPT-4o-mini)
+    📌 CAPA 3: IA SCORING (GPT-4o-mini)
+    → Clasifica intencion del lead
+    → Asigna prioridad 1-100
+    → Detecta SPAM automaticamente
+    → Genera resumen del mensaje
+  CAPA 4: IA EMAIL (GPT-4o-mini)
+    📌 CAPA 4: IA EMAIL (GPT-4o-mini)
+    → Genera email HTML personalizado
+    → Adapta tono segun intencion
+    → Incluye llamada a la accion
+    → Fallback generico si falla
+  CAPA 5: PERSISTENCIA + ACCION
+    📌 CAPA 5: PERSISTENCIA + ACCION
+    → Supabase PostgreSQL
+    → Gmail (envio email IA)
+    → Slack (notif. equipo)
+    
+    Ejecucion SECUENCIAL:
+    1° DB (garantiza persistencia)
+    2° Email y Slack en paralelo
+  CAPA TRANSVERSAL: ERRORES
+    🛡️ CAPA TRANSVERSAL: ERRORES
+    → Error Trigger captura fallos
+    → Slack #alertas-sistema notifica
+    → No se pierden leads en silencio
+    → Leads invalidos se registran
+
+NODOS DEL PIPELINE (orden de ejecución):
+------------------------------------------------------------------------
+   1. [webhook        ] 📥 Webhook: Recibir Lead desde Flask
+      Posición: x=250, y=300
+      Función: Recibe POST desde Flask. Responde HTTP 200 inmediatamente (fast ack). Payload JSON esperado: { nombre, apellido, email, telefono, mensaje, fuente, url_origen, ip_origen, user_agent }
+
+   2. [code           ] ⚙️ Normalización ETL + Enriquecimiento
+      Posición: x=600, y=300
+      Función: 5 submodulos ETL: (1) Mapeo unificado, (2) Normalizacion TitleCase + lowercase, (3) Validacion email RFC 5322 + telefono, (4) Enriquecimiento UUID v4 + timestamp ISO 8601, (5) Preparacion de campos para IA.
+
+   3. [if             ] ✅ Validar: Email OK?
+      Posición: x=950, y=300
+      Función: Si el email no supera la validacion, se registra en tabla de errores y termina el flujo.
+
+   4. [openAi         ] 🤖 IA: Clasificar Intención (GPT-4o-mini)
+      Posición: x=1300, y=150
+      Función: GPT-4o-mini analiza el mensaje del lead y devuelve JSON con: clasificacion, prioridad (1-100), confianza (0-1), resumen. Modelo mas barato de OpenAI (~$0.0001 por lead).
+
+   5. [code           ] ⚠️ Registrar: Lead Inválido en Log de Errores
+      Posición: x=1300, y=600
+      Función: Procesa leads que no superan la validacion. En produccion, escribe en tabla lead_events de Supabase con tipo_evento='validacion_fallo'.
+
+   6. [code           ] 📊 Parsear: Extraer Clasificación IA
+      Posición: x=1650, y=150
+      Función: Parsea el JSON que devuelve GPT-4o-mini. Si falla el parseo, asigna valores por defecto seguros.
+
+   7. [if             ] 🚫 ¿Es SPAM?
+      Posición: x=2000, y=150
+      Función: Si la IA clasifica como SPAM, no se envia email ni se notifica. Solo se registra en DB con estado 'spam'.
+
+   8. [openAi         ] 🤖 IA: Generar Email Personalizado (GPT-4o-mini)
+      Posición: x=2350, y=50
+      Función: GPT-4o-mini genera el email HTML completo personalizado segun la intencion del lead. Costo ~$0.0003 por email generado.
+
+   9. [code           ] 📊 Parsear: Extraer Email Generado por IA
+      Posición: x=2700, y=50
+      Función: Parsea el JSON con el email generado. Fallback generico si el parseo falla.
+
+  10. [httpRequest    ] 💾 Persistir en Supabase PostgreSQL
+      Posición: x=3050, y=50
+      Función: Inserta el lead en PostgreSQL via Supabase REST API. Usa variables de entorno SUPABASE_PROJECT_ID y SUPABASE_ANON_KEY para no exponer credenciales. Configurar en n8n > Variables.
+
+  11. [errorTrigger   ] 🛡️ Error Trigger
+      Posición: x=3050, y=600
+      Función: Se activa ante cualquier excepcion no capturada en el flujo principal. Principio fail-loudly.
+
+  12. [gmail          ] 📧 Gmail: Enviar Email al Lead
+      Posición: x=3400, y=-50
+      Función: Envia el email personalizado generado por la IA. Si la generacion fallo, usa un mensaje generico de respaldo.
+
+  13. [slack          ] 🔔 Slack: Notificar al Equipo de Ventas
+      Posición: x=3400, y=150
+      Función: Notifica al canal #nuevos-leads con los datos del lead y el resultado del scoring de IA.
+
+  14. [slack          ] 🚨 Slack: Alerta Crítica de Error
+      Posición: x=3400, y=600
+      Función: Alerta al equipo tecnico con todos los detalles del error. Canal #alertas-sistema.
+
+CONEXIONES ENTRE NODOS:
+--------------------------------------------------
+  📥 Webhook: Recibir Lead desde Flask  ->  ⚙️ Normalización ETL + Enriquecimiento
+  ⚙️ Normalización ETL + Enriquecimiento  ->  ✅ Validar: Email OK?
+  ✅ Validar: Email OK?  ->  🤖 IA: Clasificar Intención (GPT-4o-mini)
+  ✅ Validar: Email OK?  ->  ⚠️ Registrar: Lead Inválido en Log de Errores
+  🤖 IA: Clasificar Intención (GPT-4o-mini)  ->  📊 Parsear: Extraer Clasificación IA
+  📊 Parsear: Extraer Clasificación IA  ->  🚫 ¿Es SPAM?
+  🚫 ¿Es SPAM?  ->  🤖 IA: Generar Email Personalizado (GPT-4o-mini)
+  🚫 ¿Es SPAM?  ->  💾 Persistir en Supabase PostgreSQL
+  🤖 IA: Generar Email Personalizado (GPT-4o-mini)  ->  📊 Parsear: Extraer Email Generado por IA
+  📊 Parsear: Extraer Email Generado por IA  ->  💾 Persistir en Supabase PostgreSQL
+  💾 Persistir en Supabase PostgreSQL  ->  📧 Gmail: Enviar Email al Lead
+  💾 Persistir en Supabase PostgreSQL  ->  🔔 Slack: Notificar al Equipo de Ventas
+  🛡️ Error Trigger  ->  🚨 Slack: Alerta Crítica de Error
+
+CREDENCIALES REQUERIDAS:
+--------------------------------------------------
+  - Gmail OAuth2
+  - Slack Bot
+
+INSTRUCCIONES DE IMPORTACIÓN:
+--------------------------------------------------
+  === INSTRUCCIONES DE CONFIGURACION ===
+  
+  1. IMPORTAR: n8n > Workflows > Import from File
+  
+  2. VARIABLES DE ENTORNO (n8n > Settings > Environment Variables):
+     SUPABASE_PROJECT_ID = tu-project-id
+     SUPABASE_ANON_KEY = tu-anon-key
+  
+  3. CREDENCIALES A CONFIGURAR:
+     - OpenAI API: n8n > Credentials > OpenAI > Agregar API Key
+     - Gmail OAuth2: n8n > Credentials > Google OAuth2
+     - Slack: n8n > Credentials > Slack API
+  
+  4. SUPABASE - Crear tabla 'leads' con el schema de database/schema.sql
+  
+  5. FLASK - Configurar N8N_WEBHOOK_URL en app.py apuntando a:
+     http://localhost:5678/webhook/leads (n8n local)
+  
+  6. PROBAR: Ejecutar Flask, enviar formulario, verificar en Supabase.
+  
+  === COSTOS ===
+  OpenAI GPT-4o-mini: ~$0.0001 por lead (clasificacion + email)
+  50 leads de prueba: ~$0.005
+  500 leads: ~$0.05
+  
+
+Documento generado: 2026-08-05 19:42:33 UTC
+Fuente: n8n_workflow/pipeline_leads_ia.json

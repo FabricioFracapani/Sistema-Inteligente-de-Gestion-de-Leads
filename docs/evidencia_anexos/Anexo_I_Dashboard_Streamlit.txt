@@ -1,0 +1,55 @@
+========================================================================
+ANEXO I — EVIDENCIA DEL DASHBOARD DE VENTAS (Streamlit)
+========================================================================
+
+CARACTERÍSTICAS DEL DASHBOARD:
+--------------------------------------------------
+  - Framework: Streamlit 1.40.0
+  - Conexión: Supabase PostgreSQL vía supabase-py
+  - Puerto: 8501 (localhost)
+
+KPIs EN TIEMPO REAL (5 métricas):
+--------------------------------------------------
+  1. Total de Leads
+  2. Leads con intención de compra inmediata
+  3. Leads solicitando información
+  4. Spam detectado
+  5. Prioridad promedio (asignada por IA)
+
+FILTROS DISPONIBLES (5 dimensiones):
+--------------------------------------------------
+  1. Rango de fechas (desde/hasta, default: últimos 7 días)
+  2. Clasificación IA (multiselect: compra_inmediata, solicita_info, soporte, spam)
+  3. Estado del lead (multiselect: nuevo, contactado, en_negociacion, ganado, perdido, spam)
+  4. Prioridad mínima (slider: 0-100, default: 30)
+  5. Fuente del lead (multiselect: landing_page, meta_ads, wordpress)
+
+VISTA DETALLADA DE LEAD:
+--------------------------------------------------
+  - Nombre completo, email, teléfono, fuente, fecha
+  - Clasificación IA, prioridad, confianza, estado
+  - Mensaje original del lead
+  - Resumen generado por IA
+  - Email HTML completo generado por IA (expandible)
+
+CÓDIGO DE COLORES POR CLASIFICACIÓN:
+--------------------------------------------------
+  - Rojo: compra_inmediata (prioridad alta)
+  - Azul: solicita_info
+  - Naranja: soporte
+  - Gris: spam
+
+RENDIMIENTO:
+--------------------------------------------------
+  - Caché de datos: 30 segundos (@st.cache_data)
+  - Límite de consulta: 200 leads
+  - Diseño responsive con CSS personalizado
+  - Tarjetas de métricas con gradientes
+
+NOTA: Para obtener una captura de pantalla del dashboard:
+  1. Ejecutar: cd dashboard && streamlit run dashboard.py
+  2. Abrir http://localhost:8501 en el navegador
+  3. Tomar captura de pantalla completa
+
+Documento generado: 2026-08-05 19:42:33 UTC
+Fuente: dashboard/dashboard.py

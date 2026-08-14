@@ -1,0 +1,92 @@
+========================================================================
+ANEXO H — EVIDENCIA DE CORREO GENERADO POR IA
+========================================================================
+Modelo: GPT-4o-mini
+
+PROMPT DE CLASIFICACIÓN DE INTENCIÓN:
+--------------------------------------------------
+  Temperature: 0.2
+  Max Tokens: 200
+
+  [SYSTEM]
+  Eres un clasificador de leads comerciales. Analiza el mensaje del prospecto y clasificalo en UNA de estas categorias: 'compra_inmediata' (intencion clara de comprar YA), 'solicita_info' (pide info o cotizacion), 'soporte' (consulta tecnica o queja), 'spam' (generico o sospechoso). Responde UNICAMENTE con JSON valido: {"clasificacion":"...","prioridad":numero 1-100,"confianza":numero 0-1,"resumen":"breve resumen en una linea"}
+
+  [USER]
+  ={{ $json.mensaje }}
+
+
+PROMPT DE GENERACIÓN DE EMAIL:
+--------------------------------------------------
+  Temperature: 0.5
+  Max Tokens: 500
+
+  [SYSTEM]
+  Eres un representante comercial profesional de una consultora de software. Genera un email de respuesta personalizado. Reglas: (1) Si la clasificacion es 'compra_inmediata': se directo, ofrece agendar llamada HOY, incluye un link generico de calendario. (2) Si es 'solicita_info': comparte info, ofrece demo, tono util. (3) Si es 'soporte': muestra empatia, deriva a soporte, tiempo respuesta 24h. El email debe ser en HTML valido, con diseño profesional y responsive. Incluye: saludo con el nombre del lead, cuerpo personalizado segun su mensaje, firma profesional. NO uses placeholders. Responde UNICAMENTE con JSON valido: {"asunto":"...","cuerpo_html":"..."}
+
+  [USER]
+  Datos del lead:
+Nombre: {{ $json.nombre }} {{ $json.apellido }}
+Clasificacion IA: {{ $json.ia_clasificacion }}
+Prioridad: {{ $json.ia_prioridad }}/100
+Mensaje original: {{ $json.mensaje }}
+
+Genera el email de respuesta.
+
+
+EJEMPLO DE EMAIL GENERADO (compra_inmediata):
+--------------------------------------------------
+  Asunto: ¡Gracias por tu interés! Agendemos una llamada hoy
+
+  Hola [Nombre del Lead],
+
+  ¡Qué gusto saber que estás listo para dar el siguiente paso! 
+  Tenemos disponibilidad para agendar una llamada hoy mismo y 
+  conocer en detalle tus necesidades.
+
+  Podés agendar directamente en este enlace: [Link de calendario]
+
+  ¿Te funciona hoy a las 15:00? Quedo atento a tu confirmación.
+
+  Saludos cordiales,
+  Equipo Comercial
+  Consultora de Software
+
+EJEMPLO DE EMAIL GENERADO (solicita_info):
+--------------------------------------------------
+  Asunto: Información sobre nuestros servicios de automatización
+
+  Hola [Nombre del Lead],
+
+  Gracias por contactarnos. Me gustaría compartirte información 
+  sobre nuestros servicios de automatización con IA.
+
+  Te ofrecemos una demo personalizada sin costo para que puedas 
+  ver cómo funciona el sistema en acción. ¿Te gustaría agendar 
+  una videollamada de 30 minutos esta semana?
+
+  Quedo a tu disposición,
+  Equipo Comercial
+
+EJEMPLO DE EMAIL GENERADO (soporte):
+--------------------------------------------------
+  Asunto: Re: Tu consulta de soporte [#TICKET]
+
+  Hola [Nombre del Lead],
+
+  Lamentamos los inconvenientes que estás experimentando. 
+  Tu consulta ha sido derivada a nuestro equipo de soporte 
+  técnico, que la revisará en las próximas 24 horas hábiles.
+
+  Mientras tanto, ¿podrías confirmarnos el navegador y 
+  sistema operativo que estás usando? Eso nos ayudará a 
+  diagnosticar el problema más rápido.
+
+  Saludos,
+  Equipo de Soporte
+
+NOTA: Los emails reales se generan dinámicamente por GPT-4o-mini
+y se personalizan según el contenido del mensaje del lead.
+Para ver un email generado en tiempo real, ejecutar el pipeline
+completo y revisar la tabla 'leads' en Supabase (campo ia_respuesta).
+
+Documento generado: 2026-08-05 19:42:33 UTC
