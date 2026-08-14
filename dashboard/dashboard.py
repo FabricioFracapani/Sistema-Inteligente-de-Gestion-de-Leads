@@ -29,9 +29,27 @@ st.set_page_config(
 # Conexión a Supabase
 @st.cache_resource
 def init_supabase() -> Client:
-    url = os.getenv("SUPABASE_URL", "https://TU_PROJECT_ID.supabase.co")
-    key = os.getenv("SUPABASE_ANON_KEY", "TU_ANON_KEY")
-    return create_client(url, key)
+    url = os.getenv("SUPABASE_URL", "https://aczsahahbstaojidxeun.supabase.co")
+    key = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjenNhaGFoYnN0YW9qaWR4ZXVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTUxMDEsImV4cCI6MjA5ODU3MTEwMX0.7Yrz6z4_goJPdkJe0YTWU89FULavlLu_SGHu5Zg7ERU")
+    if not url or not key:
+        raise RuntimeError(
+            "Faltan SUPABASE_URL y/o SUPABASE_ANON_KEY. "
+            "Definilas en el entorno antes de iniciar el dashboard."
+        )
+    client = create_client(url, key)
+    _auth_dashboard(client)
+    return client
+
+
+def _auth_dashboard(client: Client) -> None:
+    email = os.getenv("SUPABASE_AUTH_EMAIL")
+    password = os.getenv("SUPABASE_AUTH_PASSWORD")
+    if not email or not password:
+        return
+    try:
+        client.auth.sign_in_with_password({"email": email, "password": password})
+    except Exception as e:
+        raise RuntimeError(f"No se pudo autenticar en Supabase: {e}") from e
 
 supabase = init_supabase()
 
