@@ -60,3 +60,6 @@ package-lock.json
 
 # n8n
 .n8n/
+
+# Evidencia de anexos (capturas, borradores de datos reales, docx de trabajo)
+docs/evidencia_anexos/

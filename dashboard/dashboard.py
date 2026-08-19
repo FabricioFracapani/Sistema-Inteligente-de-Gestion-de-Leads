@@ -14,7 +14,10 @@ Conecta a Supabase PostgreSQL y muestra:
 import streamlit as st
 import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from supabase import create_client, Client
+
+load_dotenv()
 
 # ============================================
 # CONFIGURACIÓN
@@ -29,8 +32,8 @@ st.set_page_config(
 # Conexión a Supabase
 @st.cache_resource
 def init_supabase() -> Client:
-    url = os.getenv("SUPABASE_URL", "https://aczsahahbstaojidxeun.supabase.co")
-    key = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjenNhaGFoYnN0YW9qaWR4ZXVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTUxMDEsImV4cCI6MjA5ODU3MTEwMX0.7Yrz6z4_goJPdkJe0YTWU89FULavlLu_SGHu5Zg7ERU")
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_ANON_KEY")
     if not url or not key:
         raise RuntimeError(
             "Faltan SUPABASE_URL y/o SUPABASE_ANON_KEY. "
@@ -146,8 +149,8 @@ with st.sidebar:
     # Fuente
     fuentes = st.multiselect(
         "Fuente",
-        ["landing_page", "meta_ads", "wordpress"],
-        default=["landing_page", "meta_ads", "wordpress"]
+        ["landing_page", "meta_ads", "wordpress", "test_100_v3"],
+        default=["landing_page", "meta_ads", "wordpress", "test_100_v3"]
     )
 
     st.divider()
