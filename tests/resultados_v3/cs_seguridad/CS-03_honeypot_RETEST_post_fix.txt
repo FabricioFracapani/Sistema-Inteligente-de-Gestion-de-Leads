@@ -1,0 +1,23 @@
+RE-TEST post-fix: honeypot ahora se valida server-side (landing_page/app.py).
+Comando: POST /api/leads con _hp_field lleno + datos validos + csrf valido.
+---
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.8 Python/3.11.3
+Date: Sat, 22 Aug 2026 17:17:23 GMT
+Content-Type: application/json
+Content-Length: 73
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Server: 
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=()
+Cross-Origin-Opener-Policy: same-origin
+Access-Control-Allow-Origin: http://localhost:5000
+Vary: Origin, Cookie
+Connection: close
+
+{
+  "redirect": "/gracias?nombre=CS03RetestPostFix",
+  "success": true
+}

@@ -2,54 +2,54 @@
 ANEXO I — EVIDENCIA DEL DASHBOARD DE VENTAS (Streamlit)
 ========================================================================
 
-CARACTERÍSTICAS DEL DASHBOARD:
+CARACTERISTICAS DEL DASHBOARD:
 --------------------------------------------------
-  - Framework: Streamlit 1.40.0
-  - Conexión: Supabase PostgreSQL vía supabase-py
+  - Framework: Streamlit 1.40.0 (pinneado en dashboard/requirements.txt)
+  - Conexion: Supabase PostgreSQL via supabase-py 2.7.0
   - Puerto: 8501 (localhost)
 
-KPIs EN TIEMPO REAL (5 métricas):
+KPIs EN TIEMPO REAL (5 metricas, extraidas de dashboard.py):
 --------------------------------------------------
-  1. Total de Leads
-  2. Leads con intención de compra inmediata
-  3. Leads solicitando información
-  4. Spam detectado
-  5. Prioridad promedio (asignada por IA)
+  1. Total Leads
+  2. 🔥 Compra Inmediata
+  3. ℹ️ Solicita Info
+  4. 🚫 Spam Detectado
+  5. ⭐ Prioridad Promedio
 
-FILTROS DISPONIBLES (5 dimensiones):
+FILTROS DISPONIBLES (extraidos de dashboard.py):
 --------------------------------------------------
-  1. Rango de fechas (desde/hasta, default: últimos 7 días)
+  1. Rango de fechas (desde/hasta, default: ultimos 7 dias)
   2. Clasificación IA (multiselect: compra_inmediata, solicita_info, soporte, spam)
-  3. Estado del lead (multiselect: nuevo, contactado, en_negociacion, ganado, perdido, spam)
-  4. Prioridad mínima (slider: 0-100, default: 30)
-  5. Fuente del lead (multiselect: landing_page, meta_ads, wordpress)
+  3. Estado (multiselect: nuevo, contactado, en_negociacion, ganado, perdido, spam)
+  4. Prioridad mínima (IA) (slider: 0-100, default: 30)
+  5. Fuente (multiselect: landing_page, meta_ads, wordpress, test_100_v3)
 
 VISTA DETALLADA DE LEAD:
 --------------------------------------------------
-  - Nombre completo, email, teléfono, fuente, fecha
-  - Clasificación IA, prioridad, confianza, estado
-  - Mensaje original del lead
-  - Resumen generado por IA
-  - Email HTML completo generado por IA (expandible)
+  - Nombre completo, email, fuente, estado
+  - Clasificacion IA, prioridad, resumen generado por IA
+  - Mensaje original del lead (truncado a 120 caracteres en la tarjeta)
+  - Boton 'Ver' para inspeccionar el lead seleccionado
 
-CÓDIGO DE COLORES POR CLASIFICACIÓN:
+CODIGO DE COLORES POR CLASIFICACION (color_map real del codigo):
 --------------------------------------------------
-  - Rojo: compra_inmediata (prioridad alta)
-  - Azul: solicita_info
-  - Naranja: soporte
-  - Gris: spam
+  - compra_inmediata: Rojo
+  - solicita_info: Azul
+  - soporte: Naranja
+  - spam: Gris
 
 RENDIMIENTO:
 --------------------------------------------------
-  - Caché de datos: 30 segundos (@st.cache_data)
-  - Límite de consulta: 200 leads
-  - Diseño responsive con CSS personalizado
-  - Tarjetas de métricas con gradientes
+  - Cache de datos: 30 segundos (@st.cache_data(ttl=30))
+  - Limite de consulta: 200 leads (.limit(200) en la query a Supabase)
+  - Diseno responsive con CSS personalizado (gradientes en las tarjetas KPI)
 
 NOTA: Para obtener una captura de pantalla del dashboard:
   1. Ejecutar: cd dashboard && streamlit run dashboard.py
   2. Abrir http://localhost:8501 en el navegador
   3. Tomar captura de pantalla completa
 
-Documento generado: 2026-08-05 19:42:33 UTC
+Documento generado: 2026-08-22 21:50:29 UTC
 Fuente: dashboard/dashboard.py
+Commit HEAD al generar (M-13): 61afff0c5b722a6fbe4afd69463543a9333826ae
+Enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/61afff0c5b722a6fbe4afd69463543a9333826ae

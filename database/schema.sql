@@ -31,11 +31,12 @@ CREATE TABLE leads (
     user_agent      TEXT,
     timestamp_ingesta TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- Resultados de IA
-    ia_clasificacion VARCHAR(50),          -- compra_inmediata, solicita_info, soporte, spam
-    ia_prioridad    INTEGER CHECK (ia_prioridad BETWEEN 1 AND 100),
-    ia_confianza    DECIMAL(4,3) CHECK (ia_confianza BETWEEN 0 AND 1),
+    ia_clasificacion VARCHAR(50),          -- compra_inmediata, solicita_info, soporte, spam, sin_clasificar
+    ia_prioridad    INTEGER CHECK (ia_prioridad BETWEEN 0 AND 100), -- 0 = spam forzado; NULL = fallback sin dato
+    ia_confianza    DECIMAL(4,3) CHECK (ia_confianza BETWEEN 0 AND 1), -- NULL cuando ia_fallback = true
     ia_resumen      TEXT,
     ia_respuesta    TEXT,                  -- email HTML generado por IA
+    ia_fallback     BOOLEAN NOT NULL DEFAULT false, -- true si la IA no devolvio JSON parseable (CF-04)
     -- Gestión del embudo
     estado          VARCHAR(30) NOT NULL DEFAULT 'nuevo',
     responsable     VARCHAR(100),

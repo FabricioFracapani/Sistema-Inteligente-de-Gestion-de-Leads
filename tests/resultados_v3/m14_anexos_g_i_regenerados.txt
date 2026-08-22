@@ -1,0 +1,93 @@
+========================================================================
+M-14 - ANEXOS G E I REGENERADOS (fechados DESPUES de la corrida)
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-22
+========================================================================
+
+PROBLEMA ENCONTRADO
+  El Anexo G (n8n) y el Anexo I (Dashboard), tanto en los .txt sueltos
+  como pegados dentro del .docx final, estaban fechados
+  "Documento generado: 2026-08-05 19:42:33 UTC" -13 dias ANTES de la
+  corrida real de 100 pruebas (2026-08-18) que se supone que esa
+  evidencia documenta. Ademas:
+    - El Anexo G decia "Workflow: ... v6" / "Versión: 6.0.0", que no
+      coincide ni con el nombre interno del workflow (que decia "v3")
+      ni con la version del documento (docx nombrado "CORREGIDO_v7").
+    - El Anexo G viejo tenia 14 nodos y un solo paso de persistencia
+      ("Persistir en Supabase PostgreSQL"), pero el pipeline real ya
+      tiene 15 nodos funcionales con persistencia en DOS pasos (Insert
+      temprano + Update posterior) desde antes de esta sesion.
+    - El Anexo I viejo listaba solo 3 fuentes de lead (landing_page,
+      meta_ads, wordpress); dashboard.py ya filtra por una cuarta
+      (test_100_v3) que el anexo no mencionaba.
+  Una evidencia fechada antes del hecho que prueba es, como bien decis,
+  un problema de forma grave: no puede ser evidencia de algo que todavia
+  no habia pasado cuando se genero.
+
+QUE SE HIZO
+
+  1) n8n_workflow/Pipeline de Leads con IA.json
+     - Se renombro el workflow de "...v3" a "...v7", para que coincida
+       con la version del documento (y se dejo de inventar un "v6"
+       que no correspondia a nada).
+
+  2) docs/evidencia_anexos/generar_anexo_G.py (reescrito)
+     - Ahora arma el encabezado completo (Workflow, Total nodos,
+       Timezone) leyendo el JSON real, en vez de tener esos datos
+       escritos a mano y descolgados del artefacto.
+     - Estampa su propia fecha de generacion (UTC) en cada corrida, asi
+       nunca vuelve a quedar fechado antes de la corrida que documenta.
+     - Timezone: se corrigio la afirmacion "America/Argentina/Buenos_Aires"
+       (no verificable: el contenedor n8n no tiene GENERIC_TIMEZONE
+       configurada) por una nota honesta de que no esta seteada
+       explicitamente.
+     - Salida consolidada en un unico archivo canonico:
+       docs/evidencia_anexos/Anexo_G_Pipeline_n8n.txt (se elimino
+       Anexo_G_Nodos_Coherente.txt, que era un intermedio de una sesion
+       anterior y quedaba duplicado/confuso con dos "Anexo G" distintos).
+
+  3) docs/evidencia_anexos/generar_anexo_I.py (nuevo)
+     - No existia un generador para Anexo I: era texto escrito a mano.
+       Este script lee dashboard/dashboard.py y dashboard/requirements.txt
+       con expresiones regulares (KPIs, filtros, cache, limite de
+       consulta, mapa de colores, versiones de Streamlit/supabase-py) y
+       arma el anexo a partir del codigo real, con su propia fecha de
+       generacion en cada corrida.
+     - Salida: docs/evidencia_anexos/Anexo_I_Dashboard_Streamlit.txt
+
+  4) Ambos generadores se corrieron ahora (2026-08-22), 4 dias despues
+     de la corrida del 18/08 que documentan -no antes-.
+
+  5) TFI_-_..._CORREGIDO_v7.docx (el documento final)
+     - Se hizo un backup previo:
+       docs/evidencia_anexos/TFI_-_..._CORREGIDO_v7.BACKUP-pre-anexoGI.docx
+     - Se reemplazaron los bloques de texto de Anexo G (paginas internas,
+       antes 135 lineas/parrafos) y Anexo I (antes 47 lineas/parrafos)
+       por el contenido nuevo (92 y 53 lineas respectivamente),
+       preservando el mismo formato (fuente 9pt, mismo estilo) que el
+       resto del anexo. Anexo H y Anexo J (antes y despues) no se
+       tocaron.
+     - Verificacion: el .docx resultante abre correctamente (zip
+       integro), el orden Anexo F -> G -> H -> I -> J se mantiene, y
+       ambos bloques nuevos muestran "Documento generado: 2026-08-22".
+
+PENDIENTE - ACCION TUYA EN WORD
+  Como cambio la cantidad de parrafos, si el documento tiene un indice
+  (Tabla de Contenidos) con numeros de pagina, abrilo en Word y actualizá
+  los campos (click derecho sobre el indice > Actualizar campo, o Ctrl+A
+  luego F9) para que los numeros de pagina del indice queden correctos.
+  Tambien recomendable: revisar visualmente Anexo G e I en Word una vez
+  para confirmar que el salto de pagina/formato quedo prolijo (el
+  reemplazo preserva el formato parrafo por parrafo, pero un vistazo
+  rapido no esta de mas antes de entregar).
+
+ARCHIVOS TOCADOS
+  - n8n_workflow/Pipeline de Leads con IA.json (rename v3 -> v7)
+  - docs/evidencia_anexos/generar_anexo_G.py (reescrito)
+  - docs/evidencia_anexos/generar_anexo_I.py (nuevo)
+  - docs/evidencia_anexos/Anexo_G_Pipeline_n8n.txt (regenerado)
+  - docs/evidencia_anexos/Anexo_I_Dashboard_Streamlit.txt (regenerado)
+  - docs/evidencia_anexos/Anexo_G_Nodos_Coherente.txt (eliminado, duplicado)
+  - docs/evidencia_anexos/TFI_-_..._CORREGIDO_v7.docx (anexos G e I reemplazados)
+  - docs/evidencia_anexos/TFI_-_..._CORREGIDO_v7.BACKUP-pre-anexoGI.docx (backup nuevo)
+========================================================================

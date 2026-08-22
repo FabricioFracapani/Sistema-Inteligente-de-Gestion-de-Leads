@@ -1,0 +1,24 @@
+Comando: curl -s -i -X DELETE "$SUPABASE_URL/rest/v1/lead_events?id_evento=not.is.null" -H apikey -H Authorization Bearer (anon key) -H 'Prefer: return=representation,count=exact'
+anon no tiene ninguna policy de DELETE (ni SELECT) sobre lead_events -> se espera 0 filas afectadas.
+---
+HTTP/2 200 
+date: Sat, 22 Aug 2026 17:08:36 GMT
+content-type: application/json; charset=utf-8
+content-length: 2
+content-range: */0
+cf-ray: a2f37afc6e1d9288-SCL
+cf-cache-status: DYNAMIC
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+content-profile: public
+preference-applied: return=representation, count=exact
+sb-gateway-version: 1
+sb-project-ref: aczsahahbstaojidxeun
+sb-request-id: 01a02a72-19c5-748a-aa4f-2cb2d6f23988
+x-envoy-attempt-count: 1
+x-envoy-upstream-service-time: 25
+set-cookie: __cf_bm=yjGNwGktiXsT7wR4NFfMbau5vE.LKDsuslkA.wDFI7A-1787418515.9051116-1.0.1.1-zrt5Kfc7mAcSbE8k434F6oURnMt0cAVX9GDjMYbWHLdTZrmiRroaTM3oguF6Snh2fQJR_ktY_1yNsikx32_IdZjzCrvyyxPVqhSrGlopnt2tS.osXsNKiWuRmjs30sfj; HttpOnly; SameSite=None; Secure; Path=/; Domain=supabase.co; Expires=Sat, 22 Aug 2026 17:38:36 GMT
+alt-svc: h3=":443"; ma=86400
+
+[]

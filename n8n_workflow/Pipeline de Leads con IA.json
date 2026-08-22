@@ -1,5 +1,5 @@
 {
-  "name": "Pipeline de Leads con IA - TFI UTN FRM v3",
+  "name": "Pipeline de Leads con IA - TFI UTN FRM v7",
   "nodes": [
     {
       "parameters": {
@@ -110,7 +110,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rawOutput = $input.first().json.choices?.[0]?.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\n\nlet classification = {};\ntry {\n  classification = JSON.parse(cleanJson);\n} catch (e) {\n  classification = {\n    clasificacion: 'solicita_info',\n    prioridad: 50,\n    confianza: 0.5,\n    resumen: 'No se pudo clasificar automaticamente.'\n  };\n}\n\nconst lead = $('⚙️ Normalización ETL + Enriquecimiento').item.json;\n\nreturn [{\n  json: {\n    ...lead,\n    ia_clasificacion: classification.clasificacion || 'solicita_info',\n    ia_prioridad: classification.prioridad || 50,\n    ia_confianza: classification.confianza || 0.5,\n    ia_resumen: classification.resumen || '',\n    _stage: 'ia_clasificado'\n  }\n}];"
+        "jsCode": "const rawOutput = $input.first().json.choices?.[0]?.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\n\nlet classification = {};\nlet ia_fallback = false;\ntry {\n  classification = JSON.parse(cleanJson);\n} catch (e) {\n  // CF-04: si la IA no devuelve un JSON parseable, no fabricamos una\n  // clasificacion ni una confianza inventadas. Usamos un centinela\n  // explicito y dejamos ia_fallback=true para poder filtrar estos\n  // casos en vez de contarlos como aciertos/fallos de la IA.\n  ia_fallback = true;\n  classification = {\n    clasificacion: 'sin_clasificar',\n    prioridad: null,\n    confianza: null,\n    resumen: 'Fallo el parseo de la respuesta de IA (fallback CF-04).'\n  };\n}\n\nconst lead = $('⚙️ Normalización ETL + Enriquecimiento').item.json;\n\nconst ia_clasificacion = classification.clasificacion || 'sin_clasificar';\nlet ia_prioridad = ia_fallback ? null : (classification.prioridad ?? 50);\nconst ia_confianza = ia_fallback ? null : (classification.confianza ?? 0.5);\n\n// Regla de negocio (m06): spam siempre prioridad 0, sin excepcion,\n// incluso si el modelo devolvio otro valor.\nif (ia_clasificacion === 'spam') {\n  ia_prioridad = 0;\n}\n\nreturn [{\n  json: {\n    ...lead,\n    ia_clasificacion,\n    ia_prioridad,\n    ia_confianza,\n    ia_resumen: classification.resumen || '',\n    ia_fallback,\n    _stage: 'ia_clasificado'\n  }\n}];\n"
       },
       "id": "730c99a3-a3a5-4cef-8d17-5331335f4c03",
       "name": "📊 Parsear: Extraer Clasificación IA",
@@ -532,11 +532,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjenNhaGFoYnN0YW9qaWR4ZXVuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NTEwMSwiZXhwIjoyMDk4NTcxMTAxfQ.cprc1ZGJKc9mX8RALaAAh0cnJh6xohptgfv4D3CnNjU"
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjenNhaGFoYnN0YW9qaWR4ZXVuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NTEwMSwiZXhwIjoyMDk4NTcxMTAxfQ.cprc1ZGJKc9mX8RALaAAh0cnJh6xohptgfv4D3CnNjU"
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
             },
             {
               "name": "Content-Type",
@@ -602,6 +602,10 @@
             {
               "name": "ia_resumen",
               "value": "={{ $('📊 Parsear: Extraer Clasificación IA').item.json.ia_resumen }}"
+            },
+            {
+              "name": "ia_fallback",
+              "value": "={{ $('📊 Parsear: Extraer Clasificación IA').item.json.ia_fallback }}"
             },
             {
               "name": "ia_respuesta",
