@@ -49,7 +49,7 @@ NOTA: Para obtener una captura de pantalla del dashboard:
   2. Abrir http://localhost:8501 en el navegador
   3. Tomar captura de pantalla completa
 
-Documento generado: 2026-08-22 21:50:29 UTC
+Documento generado: 2026-08-22 21:51:35 UTC
 Fuente: dashboard/dashboard.py
-Commit HEAD al generar (M-13): 61afff0c5b722a6fbe4afd69463543a9333826ae
-Enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/61afff0c5b722a6fbe4afd69463543a9333826ae
+Commit HEAD al generar (M-13): 15db5d0bfc5882efe96ed84973ca04e95117fa42
+Enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/15db5d0bfc5882efe96ed84973ca04e95117fa42

@@ -88,7 +88,7 @@ El pipeline escribe en 'leads' en dos momentos con dos roles distintos:
   IA responde bien, y requiere el rol privilegiado por la propia politica de la
   tabla.
 
-Documento generado: 2026-08-22 21:50:29 UTC
+Documento generado: 2026-08-22 21:51:35 UTC
 Fuente: n8n_workflow/Pipeline de Leads con IA.json
-Commit HEAD al generar (M-13): 61afff0c5b722a6fbe4afd69463543a9333826ae
-Enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/61afff0c5b722a6fbe4afd69463543a9333826ae
+Commit HEAD al generar (M-13): 15db5d0bfc5882efe96ed84973ca04e95117fa42
+Enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/15db5d0bfc5882efe96ed84973ca04e95117fa42

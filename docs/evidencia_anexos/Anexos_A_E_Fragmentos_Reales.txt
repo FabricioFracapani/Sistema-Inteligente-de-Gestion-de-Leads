@@ -1,10 +1,10 @@
 NOTA DE VERSION (M-13): estos fragmentos se extrajeron en vivo de los
 archivos fuente al momento de generar este documento. El commit de git
 que estaba en HEAD en ese momento fue:
-  commit: 61afff0c5b722a6fbe4afd69463543a9333826ae
+  commit: 15db5d0bfc5882efe96ed84973ca04e95117fa42
   rama:   Master-Demo
-  enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/61afff0c5b722a6fbe4afd69463543a9333826ae
-Generado: 2026-08-22 21:50:29 UTC
+  enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/15db5d0bfc5882efe96ed84973ca04e95117fa42
+Generado: 2026-08-22 21:51:35 UTC
 IMPORTANTE: si este mismo archivo se commitea DESPUES de generarse, el
 commit resultante sera distinto al citado arriba (un commit no puede
 referenciar su propio hash). El hash correcto para citar es el del
