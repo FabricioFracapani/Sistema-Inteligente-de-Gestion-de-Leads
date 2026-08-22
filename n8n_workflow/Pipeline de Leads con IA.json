@@ -71,29 +71,31 @@
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o-mini",
-        "prompt": {
-          "messages": [
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "role": "system",
-              "content": "Sos un clasificador de intención de leads para una empresa de consultoría. Analizás el mensaje de un lead y devolvés EXCLUSIVAMENTE un objeto JSON válido, sin texto adicional, sin markdown, sin explicaciones.  Categorías permitidas para \"clasificacion\" (elegí exactamente una): - compra_inmediata: expresa intención clara de contratar o comprar YA - solicita_info: pide información general sobre servicios, planes o precios, sin urgencia - soporte: consulta técnica, problema o queja de un cliente/prospecto - spam: mensaje genérico, irrelevante, publicitario o sin sentido  Reglas: - \"prioridad\": entero de 0 a 100 (mayor = más urgente/valioso comercialmente) - \"confianza\": número entre 0.0 y 1.0 (tu certeza en la clasificación) - \"resumen\": máximo 15 palabras, en español  Formato de salida obligatorio (solo esto): {\"clasificacion\":\"...\",\"prioridad\":0,\"confianza\":0.0,\"resumen\":\"...\"}"
-            },
-            {
-              "content": "=Datos del lead:\nNombre: {{ $json.nombre }} {{ $json.apellido }}\nFuente: {{ $json.fuente }}\nMensaje: {{ $json.mensaje }}"
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"gpt-4o-mini\",\n  temperature: 0.2,\n  max_tokens: 200,\n  messages: [\n    { role: \"system\", content: \"Sos un clasificador de intención de leads para una empresa de consultoría. Analizás el mensaje de un lead y devolvés EXCLUSIVAMENTE los campos definidos por el esquema JSON provisto, sin texto adicional, sin markdown, sin explicaciones.\\n\\nCategorías permitidas para \\\"clasificacion\\\" (elegí exactamente una):\\n- compra_inmediata: expresa intención clara de contratar o comprar YA\\n- solicita_info: pide información general sobre servicios, planes o precios, sin urgencia\\n- soporte: consulta técnica, problema o queja de un cliente/prospecto\\n- spam: mensaje genérico, irrelevante, publicitario o sin sentido\\n\\nReglas:\\n- \\\"prioridad\\\": entero de 0 a 100 (mayor = más urgente/valioso comercialmente)\\n- \\\"confianza\\\": número entre 0.0 y 1.0 (tu certeza en la clasificación)\\n- \\\"resumen\\\": máximo 15 palabras, en español\\n- No afirmes la existencia de adjuntos, enlaces ni documentos que no se te proporcionen explícitamente en el mensaje del lead.\" },\n    { role: \"user\", content: \"Datos del lead:\\nNombre: \" + $json.nombre + \" \" + $json.apellido + \"\\nFuente: \" + $json.fuente + \"\\nMensaje: \" + $json.mensaje }\n  ],\n  response_format: {\n    type: \"json_schema\",\n    json_schema: {\n      name: \"clasificacion_lead\",\n      strict: true,\n      schema: {\n        type: \"object\",\n        properties: {\n          clasificacion: { type: \"string\", enum: [\"compra_inmediata\", \"solicita_info\", \"soporte\", \"spam\"] },\n          prioridad: { type: \"integer\", minimum: 0, maximum: 100 },\n          confianza: { type: \"number\", minimum: 0, maximum: 1 },\n          resumen: { type: \"string\" }\n        },\n        required: [\"clasificacion\", \"prioridad\", \"confianza\", \"resumen\"],\n        additionalProperties: false\n      }\n    }\n  }\n}) }}",
         "options": {
-          "maxTokens": 200,
-          "temperature": 0.2
-        },
-        "requestOptions": {}
+          "timeout": 20000
+        }
       },
       "id": "65f3931d-2e09-49f3-a3f6-88f59be27c57",
       "name": "🤖 IA: Clasificar Intención (GPT-4o-mini)",
-      "type": "n8n-nodes-base.openAi",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         -1696,
         256
@@ -104,11 +106,11 @@
           "name": "OpenAI account"
         }
       },
-      "notes": "GPT-4o-mini analiza el mensaje del lead y devuelve JSON con: clasificacion, prioridad (1-100), confianza (0-1), resumen. Modelo mas barato de OpenAI (~$0.0001 por lead)."
+      "notes": "Llamada directa a la API de OpenAI (Chat Completions) via HTTP Request, con response_format: json_schema (strict) para forzar la forma del JSON de salida. Reemplaza al nodo nativo n8n-nodes-base.openAi (deprecado, sin soporte de response_format). Reusa la credencial OpenAI existente como Predefined Credential Type."
     },
     {
       "parameters": {
-        "jsCode": "const rawOutput = $input.first().json.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\n\nlet classification = {};\ntry {\n  classification = JSON.parse(cleanJson);\n} catch (e) {\n  classification = {\n    clasificacion: 'solicita_info',\n    prioridad: 50,\n    confianza: 0.5,\n    resumen: 'No se pudo clasificar automaticamente.'\n  };\n}\n\nconst lead = $('⚙️ Normalización ETL + Enriquecimiento').item.json;\n\nreturn [{\n  json: {\n    ...lead,\n    ia_clasificacion: classification.clasificacion || 'solicita_info',\n    ia_prioridad: classification.prioridad || 50,\n    ia_confianza: classification.confianza || 0.5,\n    ia_resumen: classification.resumen || '',\n    _stage: 'ia_clasificado'\n  }\n}];"
+        "jsCode": "const rawOutput = $input.first().json.choices?.[0]?.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\n\nlet classification = {};\ntry {\n  classification = JSON.parse(cleanJson);\n} catch (e) {\n  classification = {\n    clasificacion: 'solicita_info',\n    prioridad: 50,\n    confianza: 0.5,\n    resumen: 'No se pudo clasificar automaticamente.'\n  };\n}\n\nconst lead = $('⚙️ Normalización ETL + Enriquecimiento').item.json;\n\nreturn [{\n  json: {\n    ...lead,\n    ia_clasificacion: classification.clasificacion || 'solicita_info',\n    ia_prioridad: classification.prioridad || 50,\n    ia_confianza: classification.confianza || 0.5,\n    ia_resumen: classification.resumen || '',\n    _stage: 'ia_clasificado'\n  }\n}];"
       },
       "id": "730c99a3-a3a5-4cef-8d17-5331335f4c03",
       "name": "📊 Parsear: Extraer Clasificación IA",
@@ -156,29 +158,31 @@
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o-mini",
-        "prompt": {
-          "messages": [
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "role": "system",
-              "content": "Sos un representante comercial profesional de una consultora de software. Generás un email de respuesta personalizado para un lead. Devolvés EXCLUSIVAMENTE un objeto JSON válido, sin markdown, sin texto adicional.  Adaptá el tono según la clasificación del lead: - compra_inmediata: directo, ofrecé agendar una llamada hoy, incluí un llamado a la acción claro. - solicita_info: compartí información útil, ofrecé una demo, tono servicial. - soporte: mostrá empatía, indicá que derivás a soporte con respuesta en 24h.  Reglas del email: - HTML válido, diseño profesional y responsive. - Saludo con el nombre del lead. - Cuerpo personalizado según su mensaje original. - Firma profesional. - NO uses placeholders tipo [nombre] ni [empresa].  Formato de salida obligatorio (solo esto): {\"asunto\":\"...\",\"cuerpo_html\":\"...\"}"
-            },
-            {
-              "content": "=Datos del lead:\nNombre: {{ $json.nombre }} {{ $json.apellido }}\nClasificacion IA: {{ $json.ia_clasificacion }}\nPrioridad: {{ $json.ia_prioridad }}/100\nMensaje original: {{ $json.mensaje }}\n\nGenera el email de respuesta."
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"gpt-4o-mini\",\n  temperature: 0.5,\n  max_tokens: 500,\n  messages: [\n    { role: \"system\", content: \"Sos un representante comercial profesional de una consultora de software. Generás un email de respuesta personalizado para un lead, en HTML válido, diseño profesional y responsive, devolviendo EXCLUSIVAMENTE los campos definidos por el esquema JSON provisto.\\n\\nAdaptá el tono según la clasificación del lead:\\n- compra_inmediata: directo, ofrecé agendar una llamada hoy con un llamado a la acción claro EN TEXTO (nunca un link).\\n- solicita_info: compartí información útil, ofrecé una demo, tono servicial.\\n- soporte: mostrá empatía, indicá que derivás a soporte con respuesta en 24h.\\n\\nReglas:\\n- Saludo con el nombre del lead.\\n- Cuerpo personalizado según su mensaje original.\\n- Firma profesional.\\n- NO uses placeholders tipo [nombre] ni [empresa].\\n- No afirmes la existencia de adjuntos, enlaces ni documentos que no se te proporcionen explícitamente: si querés invitar a agendar una reunión, hacelo con una llamada a la acción en texto (por ejemplo \\\"respondé este email para coordinar un horario\\\"), sin inventar URLs de calendario ni de ningún otro tipo.\" },\n    { role: \"user\", content: \"Datos del lead:\\nNombre: \" + $json.nombre + \" \" + $json.apellido + \"\\nClasificacion IA: \" + $json.ia_clasificacion + \"\\nPrioridad: \" + $json.ia_prioridad + \"/100\\nMensaje original: \" + $json.mensaje + \"\\n\\nGenera el email de respuesta.\" }\n  ],\n  response_format: {\n    type: \"json_schema\",\n    json_schema: {\n      name: \"email_generado\",\n      strict: true,\n      schema: {\n        type: \"object\",\n        properties: {\n          asunto: { type: \"string\" },\n          cuerpo_html: { type: \"string\" }\n        },\n        required: [\"asunto\", \"cuerpo_html\"],\n        additionalProperties: false\n      }\n    }\n  }\n}) }}",
         "options": {
-          "maxTokens": 500,
-          "temperature": 0.5
-        },
-        "requestOptions": {}
+          "timeout": 20000
+        }
       },
       "id": "4d3a54d3-2dd8-49f8-b520-34c6b1af2b8e",
       "name": "🤖 IA: Generar Email Personalizado (GPT-4o-mini)",
-      "type": "n8n-nodes-base.openAi",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         -656,
         160
@@ -189,11 +193,11 @@
           "name": "OpenAI account"
         }
       },
-      "notes": "GPT-4o-mini genera el email HTML completo personalizado segun la intencion del lead. Costo ~$0.0003 por email generado."
+      "notes": "Llamada directa a la API de OpenAI (Chat Completions) via HTTP Request, con response_format: json_schema (strict) para forzar la forma del JSON de salida. Reemplaza al nodo nativo n8n-nodes-base.openAi (deprecado, sin soporte de response_format). Reusa la credencial OpenAI existente como Predefined Credential Type."
     },
     {
       "parameters": {
-        "jsCode": "const rawOutput = $input.first().json.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\nconst lead = $('📊 Parsear: Extraer Clasificación IA').item.json;\nlet emailData = {};\ntry {\n  emailData = JSON.parse(cleanJson);\n} catch (e) {\n  emailData = {\n    asunto: 'Gracias por contactarnos, ' + (lead.nombre || '') + '!',\n    cuerpo_html: '<p>Hola <strong>' + (lead.nombre || '') + '</strong>,</p><p>Gracias por tu consulta. Nuestro equipo la revisara y te contactara en las proximas 24 horas.</p><p>Saludos,<br>Equipo Comercial</p>'\n  };\n}\nreturn [{\n  json: {\n    ...lead,\n    ia_respuesta_asunto: emailData.asunto || '',\n    ia_respuesta_html: emailData.cuerpo_html || '',\n    _stage: 'ia_email_generado'\n  }\n}];"
+        "jsCode": "const rawOutput = $input.first().json.choices?.[0]?.message?.content || '{}';\nconst cleanJson = rawOutput.replace(/```json\\n?|```/g, '').trim();\nconst lead = $('📊 Parsear: Extraer Clasificación IA').item.json;\nlet emailData = {};\ntry {\n  emailData = JSON.parse(cleanJson);\n} catch (e) {\n  emailData = {\n    asunto: 'Gracias por contactarnos, ' + (lead.nombre || '') + '!',\n    cuerpo_html: '<p>Hola <strong>' + (lead.nombre || '') + '</strong>,</p><p>Gracias por tu consulta. Nuestro equipo la revisara y te contactara en las proximas 24 horas.</p><p>Saludos,<br>Equipo Comercial</p>'\n  };\n}\nreturn [{\n  json: {\n    ...lead,\n    ia_respuesta_asunto: emailData.asunto || '',\n    ia_respuesta_html: emailData.cuerpo_html || '',\n    _stage: 'ia_email_generado'\n  }\n}];"
       },
       "id": "9305afcf-a5e2-4563-bc9e-b79e2c148cf2",
       "name": "📊 Parsear: Extraer Email Generado por IA",

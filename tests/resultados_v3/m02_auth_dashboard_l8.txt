@@ -1,0 +1,98 @@
+========================================================================
+M-02 - INVESTIGACION: AUTENTICACION DEL DASHBOARD (Streamlit -> Supabase)
+Limitacion propuesta: L8
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-22
+========================================================================
+
+PREGUNTA
+  Con que credencial y rol se conecta Streamlit a Supabase: anon key,
+  service_role, o Supabase Auth (usuario autenticado real)?
+
+EVIDENCIA EN CODIGO
+
+  1) dashboard/dashboard.py, funcion init_supabase() (linea 33-44):
+       key = os.getenv("SUPABASE_ANON_KEY")
+       client = create_client(url, key)
+       _auth_dashboard(client)
+     -> El cliente se crea con la ANON KEY, no con service_role.
+
+  2) dashboard/dashboard.py, funcion _auth_dashboard() (linea 47-55):
+       email = os.getenv("SUPABASE_AUTH_EMAIL")
+       password = os.getenv("SUPABASE_AUTH_PASSWORD")
+       if not email or not password:
+           return                          # <- no hace login, sigue como anon
+       client.auth.sign_in_with_password(...)
+     -> El login real (Supabase Auth) es OPCIONAL y depende de que existan
+        SUPABASE_AUTH_EMAIL y SUPABASE_AUTH_PASSWORD en el entorno.
+
+  3) Archivo .env real del proyecto (verificado directamente, sin exponer
+     valores): SUPABASE_AUTH_EMAIL = EMPTY, SUPABASE_AUTH_PASSWORD = EMPTY.
+     -> En la configuracion actual, _auth_dashboard() retorna en el primer
+        if y NUNCA se ejecuta sign_in_with_password(). El dashboard corre
+        100% bajo el rol "anon", sin autenticacion de usuario.
+
+  4) database/schema.sql, politicas RLS sobre la tabla leads (linea 194-244):
+       CREATE POLICY "anon_can_insert_leads"      ON leads FOR INSERT TO anon, authenticated WITH CHECK (true);
+       CREATE POLICY "anon_can_read_leads"        ON leads FOR SELECT TO anon                USING (true);   <-- clave
+       CREATE POLICY "authenticated_can_read_leads" ON leads FOR SELECT TO authenticated      USING (true);
+       CREATE POLICY "authenticated_can_update_leads" ON leads FOR UPDATE TO authenticated    USING (true) WITH CHECK (true);
+     -> La politica "anon_can_read_leads" otorga SELECT sin ninguna
+        restriccion (USING (true)) al rol anon. Es decir, RLS esta
+        ACTIVADO (ENABLE ROW LEVEL SECURITY) pero la politica de lectura
+        para anon es completamente permisiva.
+
+  5) Columnas de la tabla leads (schema.sql linea 18-44): existen tanto
+     "email"/"telefono" (texto plano) como "email_hash"/"telefono_hash"
+     (SHA-256). El hash es un campo ADICIONAL para busqueda, no un
+     reemplazo: la politica anon_can_read_leads expone las columnas en
+     texto plano igual, junto con "mensaje", "ia_resumen", etc.
+
+CONCLUSION
+  El dashboard usa la ANON KEY, no service_role, y en la configuracion
+  actual del .env NO realiza ningun login real contra Supabase Auth
+  (las credenciales para hacerlo estan vacias). Esto por si solo ya
+  contradice el modelo de "3 roles con permisos crecientes" descripto en
+  el README (anon=solo INSERT / authenticated=SELECT+UPDATE / service_role
+  =bypass), porque el dashboard nunca llega a operar como "authenticated".
+
+  Pero el punto mas serio es el disenio de la propia politica RLS: existe
+  una politica "anon_can_read_leads" con USING (true) que le da a CUALQUIER
+  poseedor de la anon key -- no solo al dashboard -- lectura completa e
+  irrestricta de toda la tabla leads (PII en texto plano incluida), sin
+  necesidad de login, sesion, ni pertenecer al rol "authenticated".
+
+  Esto significa que, EN LA PRACTICA, RLS no cumple su funcion de control
+  de acceso para lectura: cualquier cliente HTTP con la anon key (un tipo
+  de credencial que en el propio modelo de Supabase esta pensada para ser
+  publica/embebible en frontend, no secreta) puede leer toda la base de
+  leads. La politica "authenticated_can_read_leads" queda redundante y
+  jamas se ejerce, porque el dashboard nunca se autentica.
+
+  Clasificacion: NO es un caso de "service_role hardcodeada" (peor aun
+  seria bypass total de RLS), pero el efecto prescrito es equivalente al
+  planteado por el usuario: "anon embebida" + politica de lectura anon
+  irrestricta = RLS anulada en la practica para el flujo de lectura.
+
+RECOMENDACION PARA DECLARAR COMO LIMITACION L8
+  Texto sugerido para la tabla de limitaciones (README.md seccion 6 /
+  capitulo de limitaciones del TFI):
+
+  | L8 | El dashboard se conecta con la anon key de Supabase y no
+  | ejecuta autenticacion real de usuario (SUPABASE_AUTH_EMAIL/PASSWORD
+  | vacios). La politica RLS "anon_can_read_leads" (USING true) otorga
+  | lectura irrestricta de toda la tabla leads -incluida PII en texto
+  | plano- a cualquier poseedor de la anon key, sin login. RLS esta
+  | activo a nivel de motor pero no ejerce control de acceso real para
+  | lectura. | Impacto: cualquiera con la anon key lee todos los leads
+  | sin autenticarse; el modelo de 3 roles documentado no se cumple en
+  | la practica. | Abordaje: migrar el dashboard a un login real de
+  | Supabase Auth (usuario "equipo de ventas"), eliminar la politica
+  | anon_can_read_leads y dejar que "leads FOR SELECT" dependa solo de
+  | authenticated_can_read_leads. |
+
+ARCHIVOS CITADOS
+  - dashboard/dashboard.py (lineas 33-55)
+  - database/schema.sql (lineas 194-244)
+  - .env del proyecto (variables verificadas sin exponer valores)
+========================================================================

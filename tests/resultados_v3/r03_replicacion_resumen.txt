@@ -1,0 +1,15 @@
+========================================================================
+R-03 - REPLICACION (M-05)
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-22 12:34:35
+========================================================================
+
+Casos etiquetados: 65
+Corridas: 3
+
+Exactitud corrida 1: 93.8%
+Exactitud corrida 2: 96.9%
+Exactitud corrida 3: 98.5%
+
+Exactitud media +/- desvio entre corridas: 96.4% +/- 2.4%
+Casos con clasificacion estable en las 3 corridas: 62/65 (95.4%)
