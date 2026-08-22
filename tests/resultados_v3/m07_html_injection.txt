@@ -1,0 +1,47 @@
+========================================================================
+M-07 - EVIDENCIA: CASO HTML INJECTION (CP-10-05)
+TFI - Sistema Inteligente de Gestion de Leads
+Consulta realizada: 2026-08-22
+========================================================================
+
+ORIGEN DEL CASO
+  Caso de prueba: CP-10-05 "HTML injection" (categoria CP-10, mensajes de
+  borde), definido en tests/test_100_leads.py -> generar_100_casos().
+  Email del caso: html.test@test.com
+
+MENSAJE ENVIADO ORIGINALMENTE (payload de entrada al formulario)
+  <b>consulta</b> <script>alert('xss')</script> sobre automatizacion
+
+CONSULTA A SUPABASE (tabla leads, filtrando por email=html.test@test.com)
+  id_lead:          c20268f3-2192-40b5-89da-5b4c145f6b7f
+  nombre/apellido:  Html Injection / Borde
+  ia_clasificacion: soporte
+  estado:           nuevo
+  created_at:       2026-08-18T18:55:21.407399+00:00
+
+  mensaje (campo persistido tal cual figura en la base):
+    "consulta alert('xss') sobre automatizacion"
+
+ANALISIS: NEUTRALIZADO, NO CRUDO
+  El HTML NO llego crudo a la base (no aparecen <script> ni <b> literales)
+  y tampoco fue solo HTML-escapado (no aparece como &lt;script&gt;...&lt;/script&gt;).
+  Lo que ocurrio fue un STRIPPING de tags: las etiquetas <b>, </b>,
+  <script>, </script> fueron eliminadas por completo, conservando el
+  texto/contenido interno (incluido el texto "alert('xss')", que queda
+  como texto plano inerte, no como script ejecutable).
+
+  Mecanismo responsable (server-side, capa Flask, antes de reenviar a n8n):
+    landing_page/app.py, funcion sanitize_input() (linea 174-184):
+      value = re.sub(r'<[^>]*>', '', value)   # remueve cualquier tag HTML
+    Se aplica a los campos nombre, apellido, email, telefono, mensaje,
+    fuente antes de construir el payload que se envia al webhook de n8n.
+    Por eso el mensaje ya llega sin tags al pipeline y se persiste asi
+    en Supabase.
+
+CONCLUSION
+  El caso adversarial CP-10-05 (inyeccion HTML/XSS) queda neutralizado en
+  la capa de entrada (validacion/sanitizacion server-side de Flask) antes
+  de llegar a la base de datos. La evidencia en Supabase confirma que el
+  contenido almacenado es texto plano sin markup, no el payload original
+  ni una version escapada de el.
+========================================================================

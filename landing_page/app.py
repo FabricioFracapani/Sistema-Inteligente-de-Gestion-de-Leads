@@ -26,11 +26,14 @@ import secrets
 import logging
 from datetime import datetime
 
+from dotenv import load_dotenv
 from flask import (
     Flask, render_template, request, jsonify, make_response,
     session, redirect, url_for
 )
 from flask_cors import CORS
+
+load_dotenv()
 
 # ============================================================
 # CONFIGURACIÓN
@@ -45,7 +48,7 @@ app.config['DEBUG'] = os.getenv('FLASK_ENV', 'development') == 'development'
 
 # Configuración de cookies seguras
 app.config.update(
-    SESSION_COOKIE_SECURE=True,      # Solo HTTPS
+    SESSION_COOKIE_SECURE=os.getenv('FLASK_ENV', 'development') == 'production',  # Solo HTTPS en producción
     SESSION_COOKIE_HTTPONLY=True,    # No accesible desde JS
     SESSION_COOKIE_SAMESITE='Strict', # Protección CSRF
 )
@@ -188,7 +191,7 @@ def validate_lead_fields(nombre, email, telefono):
     # Nombre: 2-100 caracteres, solo letras y espacios
     if not nombre or len(nombre) < 2 or len(nombre) > 100:
         errores.append('El nombre debe tener entre 2 y 100 caracteres.')
-    elif not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s\-\']+$', nombre):
+    elif not re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s\.\-\']+$', nombre):
         errores.append('El nombre contiene caracteres no permitidos.')
 
     # Email: RFC 5322 simplificado

@@ -202,6 +202,13 @@ CREATE POLICY "anon_can_insert_leads"
     TO anon, authenticated
     WITH CHECK (true);
 
+-- P1b: Cualquiera (anónimo) puede LEER leads (dashboard Streamlit con anon key)
+--     Habilita la vista de KPIs y detalle sin requerir login de usuario
+CREATE POLICY "anon_can_read_leads"
+    ON leads FOR SELECT
+    TO anon
+    USING (true);
+
 --     Hook para calcular hashes automáticamente al insertar
 CREATE OR REPLACE FUNCTION auto_hash_lead()
 RETURNS TRIGGER AS $$

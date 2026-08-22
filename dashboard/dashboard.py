@@ -14,7 +14,10 @@ Conecta a Supabase PostgreSQL y muestra:
 import streamlit as st
 import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from supabase import create_client, Client
+
+load_dotenv()
 
 # ============================================
 # CONFIGURACIÓN
@@ -29,9 +32,27 @@ st.set_page_config(
 # Conexión a Supabase
 @st.cache_resource
 def init_supabase() -> Client:
-    url = os.getenv("SUPABASE_URL", "https://TU_PROJECT_ID.supabase.co")
-    key = os.getenv("SUPABASE_ANON_KEY", "TU_ANON_KEY")
-    return create_client(url, key)
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_ANON_KEY")
+    if not url or not key:
+        raise RuntimeError(
+            "Faltan SUPABASE_URL y/o SUPABASE_ANON_KEY. "
+            "Definilas en el entorno antes de iniciar el dashboard."
+        )
+    client = create_client(url, key)
+    _auth_dashboard(client)
+    return client
+
+
+def _auth_dashboard(client: Client) -> None:
+    email = os.getenv("SUPABASE_AUTH_EMAIL")
+    password = os.getenv("SUPABASE_AUTH_PASSWORD")
+    if not email or not password:
+        return
+    try:
+        client.auth.sign_in_with_password({"email": email, "password": password})
+    except Exception as e:
+        raise RuntimeError(f"No se pudo autenticar en Supabase: {e}") from e
 
 supabase = init_supabase()
 
@@ -128,8 +149,8 @@ with st.sidebar:
     # Fuente
     fuentes = st.multiselect(
         "Fuente",
-        ["landing_page", "meta_ads", "wordpress"],
-        default=["landing_page", "meta_ads", "wordpress"]
+        ["landing_page", "meta_ads", "wordpress", "test_100_v3"],
+        default=["landing_page", "meta_ads", "wordpress", "test_100_v3"]
     )
 
     st.divider()

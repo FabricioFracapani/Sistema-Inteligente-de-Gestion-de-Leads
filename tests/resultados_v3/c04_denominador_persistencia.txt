@@ -1,0 +1,58 @@
+========================================================================
+C-04 - DENOMINADOR INDEPENDIENTE PARA LA METRICA DE PERSISTENCIA
+TFI - Sistema Inteligente de Gestion de Leads
+Fuente: logs de Flask (landing_page/app.py), sesion 2026-08-22
+========================================================================
+
+OBJETIVO
+  Obtener el denominador de la tasa de persistencia a partir de una fuente
+  independiente de Supabase: el log de aplicacion de Flask (capa que
+  recibe el POST del formulario y reenvia a n8n). Esto hace falsable la
+  metrica: si el numerador (filas persistidas en Supabase) se comparara
+  contra si mismo, la tasa daria siempre ~100% por construccion.
+
+FUENTE
+  Log de la instancia de Flask corrida en esta sesion (logging.basicConfig
+  a stdout, capturado a archivo). Copia cruda en:
+    tests/resultados_v3/c04_flask_log_raw.log (612 lineas)
+  Rango cubierto: 2026-08-22T11:48:25 a 2026-08-22T12:33:50 (incluye el
+  smoke test previo + las 3 corridas de R-03, 196 POST /api/leads en total).
+
+METODO DE CONTEO (dos fuentes cruzadas dentro del mismo log)
+  1) Eventos de aplicacion (log_safe(), formato "[timestamp] EVENTO | email=hash | ip=..."):
+       grep "LEAD_SENT_OK" -> 193 ocurrencias
+       grep "N8N_TIMEOUT"  -> 1 ocurrencia
+       grep "UNEXPECTED_ERROR" (logger.error, sin timestamp propio) -> 2 ocurrencias
+       Total eventos de intento: 196
+
+  2) Codigos de estado HTTP reales devueltos por Flask (log de acceso werkzeug,
+     independiente del logger de aplicacion):
+       grep "POST /api/leads HTTP/1.1" -> 196 lineas
+         200 -> 193
+         500 -> 2   (ConnectionAbortedError al escribir la respuesta; ver detalle abajo)
+         504 -> 1   (timeout esperando respuesta de n8n)
+
+  Ambas fuentes coinciden exactamente (193 / 196), lo que confirma el conteo.
+
+DENOMINADOR C-04
+  Eventos aceptados con HTTP 200 y reenviados al webhook de n8n: 193
+  Total de intentos registrados en el log: 196
+  Tasa de aceptacion HTTP en Flask: 193/196 = 98.5%
+
+DETALLE DE LOS 3 CASOS NO CONTABILIZADOS EN EL DENOMINADOR
+  - 1x HTTP 504 (N8N_TIMEOUT): Flask no recibio respuesta de n8n dentro
+    de su timeout de 5s al reenviar el webhook.
+  - 2x HTTP 500 (UNEXPECTED_ERROR / ConnectionAbortedError 10053): el
+    socket del cliente se cerro antes de que Flask pudiera responder.
+  Estos 3 casos corresponden, por horario, a los mismos 3 casos que en
+  R-03 (corrida 1: CP-02-06, CP-02-07, CP-02-08) aparecieron con
+  clasificacion "None" en Supabase -- es decir, nunca llegaron a
+  reenviarse correctamente a n8n, por lo que logicamente tampoco pudieron
+  clasificarse ni persistirse. Esto es consistente entre ambas fuentes de
+  evidencia (log de Flask <-> filas ausentes/incompletas en Supabase).
+
+CONCLUSION
+  El denominador independiente (capa de aplicacion, no la base de datos)
+  para la tasa de persistencia es 193 eventos aceptados y reenviados a
+  n8n, sobre 196 intentos totales en esta sesion de medicion.
+========================================================================

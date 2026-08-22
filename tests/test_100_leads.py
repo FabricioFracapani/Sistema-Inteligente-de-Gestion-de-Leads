@@ -30,9 +30,15 @@ import re
 import random
 from datetime import datetime, timezone
 from collections import defaultdict, Counter
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_URL = os.getenv("FLASK_URL", "http://localhost:5000")
 API_URL = f"{BASE_URL}/api/leads"
+# Cada caso dispara hasta 2 llamadas a OpenAI (clasificar + generar email).
+# Tier free = 3 RPM: hace falta espaciar bastante para no pegarle al rate limit.
+SLEEP_ENTRE_CASOS = float(os.getenv("SLEEP_ENTRE_CASOS", "8"))
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "resultados_v3")
 OUTPUT_CSV = os.path.join(OUTPUT_DIR, "resultados_100_pruebas.csv")
 OUTPUT_JSON = os.path.join(OUTPUT_DIR, "resultados_100_pruebas.json")
@@ -509,7 +515,7 @@ def ejecutar_100_pruebas():
         })
 
         if i < len(casos) - 1:
-            time.sleep(0.2)
+            time.sleep(SLEEP_ENTRE_CASOS)
 
     print()
     print()
