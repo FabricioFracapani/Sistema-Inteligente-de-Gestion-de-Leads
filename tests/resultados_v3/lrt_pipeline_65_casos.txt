@@ -1,0 +1,109 @@
+========================================================================
+LRT PIPELINE REAL - 65 CASOS ETIQUETADOS (metodo: cronometro propio)
+LRT Pipeline = tiempo desde el envio del lead hasta que Supabase
+muestra ia_clasificacion ya escrita (ultimo campo del PATCH final
+de 'Actualizar IA en Supabase', que corre despues de clasificar y
+-si no es spam- de generar el email). Medido con el mismo reloj de
+principio a fin (no depende de timestamps internos de n8n).
+Fecha: 2026-08-23 20:15:26 UTC
+========================================================================
+
+n = 65/65
+Media:    7.970 s
+Mediana:  8.675 s
+Desvio:   1.854 s
+Minimo:   3.922 s
+Maximo:   11.797 s
+
+Casos <= 8s: 25/65 (38.5%)
+Casos <= 5s: 10/65 (15.4%)
+
+ESTRATIFICADO (igual que pide C-03 de la devolucion, pero ahora sobre
+LRT Pipeline real, no sobre Tabla F.1 -que se descarto por no trazable-):
+  CON generacion de email (55 casos, compra_inmediata+solicita_info+soporte):
+    media=8.683s mediana=8.765s desvio=0.842s min=7.132s max=11.797s
+    <=8s: 15/55 (27.3%)   <=5s: 0/55 (0.0%)
+  SIN generacion de email (10 casos, spam):
+    media=4.048s mediana=4.047s desvio=0.108s min=3.922s max=4.265s
+    <=8s: 10/10 (100.0%)  <=5s: 10/10 (100.0%)
+
+ADVERTENCIA IMPORTANTE: la ruta que SI responde al prospecto (con email,
+que es el 85% de los casos etiquetados) cumple el umbral de 8s en solo
+27,3% de los casos, no en el 90%+ que se venia informando (ese numero
+salia de Tabla F.1 / LRT Flask, no de esta medicion end-to-end). Esto
+es mucho mas grave que la correccion C-03 de la devolucion (que solo
+pedia separar 3,29s en 3,79s/1,38s): con la medicion real, la mayoria de
+los leads que reciben respuesta tardan MAS de 8s, no menos. Revisar con
+el equipo si esto refuta la condicion (i) de la hipotesis (>9 eventos
+validos superan 8s) antes de publicar cualquier numero de LRT Pipeline.
+
+DETALLE CASO POR CASO:
+Caso        Categoria Esperado            Obtenido            LRT Pipeline (s)  
+--------------------------------------------------------------------------------
+CP-01-01    CP-01     compra_inmediata    compra_inmediata    8.073             
+CP-01-02    CP-01     compra_inmediata    compra_inmediata    8.952             
+CP-01-03    CP-01     compra_inmediata    compra_inmediata    7.878             
+CP-01-04    CP-01     compra_inmediata    compra_inmediata    8.031             
+CP-01-05    CP-01     compra_inmediata    compra_inmediata    8.675             
+CP-01-06    CP-01     compra_inmediata    compra_inmediata    7.998             
+CP-01-07    CP-01     compra_inmediata    compra_inmediata    8.011             
+CP-01-08    CP-01     compra_inmediata    compra_inmediata    7.952             
+CP-01-09    CP-01     compra_inmediata    compra_inmediata    9.478             
+CP-01-10    CP-01     compra_inmediata    compra_inmediata    7.913             
+CP-01-11    CP-01     compra_inmediata    compra_inmediata    7.261             
+CP-01-12    CP-01     compra_inmediata    compra_inmediata    8.949             
+CP-01-13    CP-01     compra_inmediata    compra_inmediata    8.758             
+CP-01-14    CP-01     compra_inmediata    compra_inmediata    8.915             
+CP-01-15    CP-01     compra_inmediata    compra_inmediata    10.182            
+CP-01-16    CP-01     compra_inmediata    compra_inmediata    9.432             
+CP-01-17    CP-01     compra_inmediata    compra_inmediata    8.765             
+CP-01-18    CP-01     compra_inmediata    compra_inmediata    8.83              
+CP-01-19    CP-01     compra_inmediata    compra_inmediata    8.7               
+CP-01-20    CP-01     compra_inmediata    compra_inmediata    8.624             
+CP-02-01    CP-02     solicita_info       solicita_info       10.242            
+CP-02-02    CP-02     solicita_info       solicita_info       9.523             
+CP-02-03    CP-02     solicita_info       solicita_info       8.77              
+CP-02-04    CP-02     solicita_info       solicita_info       8.954             
+CP-02-05    CP-02     solicita_info       solicita_info       9.58              
+CP-02-06    CP-02     solicita_info       solicita_info       7.872             
+CP-02-07    CP-02     solicita_info       solicita_info       9.839             
+CP-02-08    CP-02     solicita_info       solicita_info       11.797            
+CP-02-09    CP-02     solicita_info       solicita_info       9.49              
+CP-02-10    CP-02     solicita_info       solicita_info       7.828             
+CP-02-11    CP-02     solicita_info       solicita_info       9.709             
+CP-02-12    CP-02     solicita_info       solicita_info       8.837             
+CP-02-13    CP-02     solicita_info       solicita_info       9.666             
+CP-02-14    CP-02     solicita_info       solicita_info       8.72              
+CP-02-15    CP-02     solicita_info       solicita_info       8.766             
+CP-02-16    CP-02     solicita_info       solicita_info       8.828             
+CP-02-17    CP-02     solicita_info       solicita_info       7.992             
+CP-02-18    CP-02     solicita_info       solicita_info       7.955             
+CP-02-19    CP-02     solicita_info       solicita_info       7.852             
+CP-02-20    CP-02     solicita_info       solicita_info       9.08              
+CP-02-21    CP-02     solicita_info       soporte             8.7               
+CP-02-22    CP-02     solicita_info       solicita_info       8.161             
+CP-02-23    CP-02     solicita_info       solicita_info       8.239             
+CP-02-24    CP-02     solicita_info       solicita_info       8.783             
+CP-02-25    CP-02     solicita_info       solicita_info       8.963             
+CP-06-01    CP-06/07  soporte             soporte             7.935             
+CP-06-02    CP-06/07  soporte             soporte             8.838             
+CP-06-03    CP-06/07  soporte             soporte             7.132             
+CP-06-04    CP-06/07  soporte             soporte             8.864             
+CP-06-05    CP-06/07  soporte             soporte             8.77              
+CP-06-06    CP-06/07  soporte             soporte             8.028             
+CP-06-07    CP-06/07  soporte             soporte             7.151             
+CP-06-08    CP-06/07  soporte             soporte             9.435             
+CP-06-09    CP-06/07  soporte             soporte             7.939             
+CP-06-10    CP-06/07  soporte             soporte             7.938             
+CP-08-01    CP-08     spam                spam                3.926             
+CP-08-02    CP-08     spam                spam                4.265             
+CP-08-03    CP-08     spam                spam                4.067             
+CP-08-04    CP-08     spam                spam                3.964             
+CP-08-05    CP-08     spam                spam                4.028             
+CP-08-06    CP-08     spam                spam                3.922             
+CP-08-07    CP-08     spam                spam                4.088             
+CP-08-08    CP-08     spam                spam                4.14              
+CP-08-09    CP-08     spam                spam                4.105             
+CP-08-10    CP-08     spam                spam                3.977             
+
+Nota. Elaboracion propia, corrida del 2026-08-23 20:15:26 UTC. Metodo: cronometro cliente (envio -> polling cada 0.5s hasta ver ia_clasificacion en Supabase). Ver tests/test_65_casos_lrt_pipeline.py.

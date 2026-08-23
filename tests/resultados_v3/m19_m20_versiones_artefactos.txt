@@ -1,0 +1,108 @@
+========================================================================
+M-19 / M-20 - VERSIONES EXACTAS Y ARTEFACTOS DE DESPLIEGUE
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-22
+========================================================================
+
+OBJETIVO
+  Fijar las versiones exactas de cada componente del stack (no rangos,
+  no "latest") y dejar artefactos de despliegue (requirements.txt,
+  docker-compose.yml) que reproduzcan el mismo entorno verificado en
+  esta sesion.
+
+------------------------------------------------------------------------
+VERSIONES VERIFICADAS (comando usado entre parentesis)
+------------------------------------------------------------------------
+  Flask:          3.1.0   (landing_page/venv: pip freeze)
+  Flask-Cors:     5.0.0
+  Werkzeug:       3.1.8
+  gunicorn:       23.0.0
+  python-dotenv:  1.0.1
+  requests:       2.32.3
+  Python (landing_page venv): 3.11.3
+
+  Streamlit:      1.40.0  (venv raiz: pip freeze -- coincide exacto con
+                            dashboard/requirements.txt, no habia drift)
+  supabase-py:    2.7.0
+  postgrest:      0.16.11
+  gotrue:         2.12.4
+  pandas:         2.3.3
+  Python (venv raiz, usado por dashboard/tests): 3.11.3
+
+  n8n:            2.18.7  (docker exec n8n n8n --version)
+  Imagen Docker:  n8nio/n8n
+  Digest exacto:  sha256:4613a202077b00e9a66a9ed83cccae01866ddc0df59222d91409bfb0d70007dd
+                  (docker inspect n8n / docker image inspect --format RepoDigests)
+  Node.js dentro del contenedor n8n: v24.14.1
+
+  Docker Engine (host):  29.4.1
+  Docker Compose:        v5.1.3
+
+  Modelo OpenAI: CONFIRMADO. Snapshot exacto: gpt-4o-mini-2024-07-18
+    (campo "model" del JSON de salida real de una ejecucion en n8n,
+    nodo "IA: Clasificar Intencion", 2026-08-22). Tambien se registro
+    el system_fingerprint de esa respuesta: fp_ab0a2ab924 (cambia si
+    OpenAI actualiza la infraestructura de serving del modelo; sirve
+    como dato adicional de trazabilidad, no como algo pineable).
+
+  ACCION TOMADA: se actualizo n8n_workflow/Pipeline de Leads con IA.json
+    en los 2 nodos IA (Clasificar Intencion y Generar Email) para pedir
+    explicitamente "gpt-4o-mini-2024-07-18" en vez del alias flotante
+    "gpt-4o-mini". Motivo: un alias puede empezar a resolver a un
+    snapshot distinto en cualquier momento sin aviso, lo que rompe la
+    reproducibilidad que pide M-19/M-20. Pendiente: sincronizar este
+    cambio en el n8n en vivo (mismo mecanismo de siempre: reimportar el
+    JSON) y volver a probar un lead.
+
+------------------------------------------------------------------------
+ARCHIVOS DE REQUIREMENTS (ya existian, se corrigio 1)
+------------------------------------------------------------------------
+  landing_page/requirements.txt  -> ya estaba pineado exacto, coincide
+                                     100% con lo instalado. Sin cambios.
+  dashboard/requirements.txt     -> ya estaba pineado exacto, coincide
+                                     100% con lo instalado. Sin cambios.
+  tests/requirements.txt         -> CORREGIDO: "requests>=2.32.0" (rango
+                                     abierto, no reproducible) pasa a
+                                     "requests==2.32.3" (version exacta
+                                     verificada).
+
+------------------------------------------------------------------------
+docker-compose.yml (NUEVO, raiz del repo)
+------------------------------------------------------------------------
+  No existia ningun docker-compose.yml: n8n se levantaba con un
+  "docker run" manual documentado en docs/LEVANTAR_PROYECTO.md, sin
+  version fijada mas alla del tag flotante "n8nio/n8n" (equivalente a
+  "latest" en la practica).
+
+  El nuevo docker-compose.yml:
+    - Pinea la imagen por DIGEST (no solo tag), que es la unica forma
+      de garantizar exactamente el mismo binario de n8n en cualquier
+      maquina, aunque "latest" avance con el tiempo.
+    - Reutiliza el volumen ya existente n8n_data (external: true) -no
+      pisa los workflows/credenciales que ya tenes cargados-.
+    - Documenta las variables de entorno reales que ya usa el
+      contenedor en vivo (confirmadas con "docker inspect"):
+      N8N_SECURE_COOKIE, N8N_BLOCK_ENV_ACCESS_IN_NODE,
+      SUPABASE_PROJECT_ID, SUPABASE_ANON_KEY, y la que falta cargar
+      (SUPABASE_SERVICE_ROLE_KEY, la nueva rotada -ver
+      tests/resultados_v3/cf04_fallback_m15_m06.txt-), leidas desde
+      .env via variables ${...} (no hardcodeadas en el archivo).
+    - Validado con "docker compose config" (no levanta nada, solo
+      parsea): sintaxis correcta, las variables se resuelven bien
+      desde el .env real del proyecto.
+
+  Uso:
+    docker compose up -d      # levanta n8n con la version pineada
+    docker compose down       # lo baja (el volumen n8n_data persiste)
+
+------------------------------------------------------------------------
+LIMITACION HONESTA
+------------------------------------------------------------------------
+  Flask y Streamlit corren directo con Python (no dockerizados) en
+  este proyecto -no hay imagen Docker que pinear para ellos-. Lo que
+  los fija de forma reproducible es la combinacion de: version exacta
+  de Python (3.11.3, verificada arriba) + requirements.txt con
+  versiones exactas (ya lo estaban, salvo el fix en tests/). Si se
+  quisiera Docker tambien para Flask/Streamlit, seria trabajo futuro,
+  no estaba pedido en este punto.
+========================================================================
