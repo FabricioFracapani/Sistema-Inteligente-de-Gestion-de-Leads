@@ -1,10 +1,10 @@
 NOTA DE VERSION (M-13): estos fragmentos se extrajeron en vivo de los
 archivos fuente al momento de generar este documento. El commit de git
 que estaba en HEAD en ese momento fue:
-  commit: 15db5d0bfc5882efe96ed84973ca04e95117fa42
+  commit: c4bbbf5a54215315523912532281b5ed110343ea
   rama:   Master-Demo
-  enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/15db5d0bfc5882efe96ed84973ca04e95117fa42
-Generado: 2026-08-22 21:51:35 UTC
+  enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/c4bbbf5a54215315523912532281b5ed110343ea
+Generado: 2026-08-24 01:26:51 UTC
 IMPORTANTE: si este mismo archivo se commitea DESPUES de generarse, el
 commit resultante sera distinto al citado arriba (un commit no puede
 referenciar su propio hash). El hash correcto para citar es el del
@@ -188,8 +188,8 @@ Adaptá el tono según la clasificación del lead:
 Reglas:
 - Saludo con el nombre del lead.
 - Cuerpo personalizado según su mensaje original.
-- Firma profesional.
-- NO uses placeholders tipo [nombre] ni [empresa].
+- Firma SIEMPRE con exactamente estas dos lineas (sin variarlas, sin inventar un nombre de persona): "Equipo Comercial" en la primera linea y "Sistema Inteligente de Gestion de Leads" en la segunda.
+- NO uses placeholders ni texto generico sin completar, ya sea con corchetes (ej. [nombre], [empresa]) o sin ellos (ej. "Tu Nombre", "Nombre del remitente", "Tu Empresa", "[Tu nombre aqui]").
 - No afirmes la existencia de adjuntos, enlaces ni documentos que no se te proporcionen explícitamente: si querés invitar a agendar una reunión, hacelo con una llamada a la acción en texto (por ejemplo "respondé este email para coordinar un horario"), sin inventar URLs de calendario ni de ningún otro tipo.
 
 --- Config REST: Persistir Early (Insert) -> Supabase ---
