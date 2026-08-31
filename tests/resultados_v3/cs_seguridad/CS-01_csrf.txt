@@ -1,0 +1,25 @@
+Comando: curl -s -i -X POST $API_URL -d 'nombre=CS01&apellido=Test&email=cs01@test-tfi.local&telefono=+542615550001&mensaje=prueba+csrf+sin+token&fuente=cs_seguridad'
+Nota: sin cookie de sesion y sin _csrf_token en el form -> validate_csrf() debe fallar.
+---
+HTTP/1.1 403 FORBIDDEN
+Server: Werkzeug/3.1.8 Python/3.11.3
+Date: Sat, 22 Aug 2026 17:10:18 GMT
+Content-Type: application/json
+Content-Length: 128
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Server: 
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=()
+Cross-Origin-Opener-Policy: same-origin
+Access-Control-Allow-Origin: http://localhost:5000
+Vary: Origin
+Connection: close
+
+{
+  "errores": [
+    "Token de seguridad inv\u00e1lido. Recarga la p\u00e1gina e intenta nuevamente."
+  ],
+  "success": false
+}

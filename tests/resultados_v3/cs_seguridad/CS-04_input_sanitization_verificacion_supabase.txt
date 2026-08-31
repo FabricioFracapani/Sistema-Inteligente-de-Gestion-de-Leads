@@ -1,0 +1,3 @@
+Verificacion en Supabase (lectura con anon key) del mensaje persistido:
+---
+[{"email":"cs04.sanitize@test-tfi.local","mensaje":"alert(1) hola  mundo","ia_clasificacion":"spam"}]

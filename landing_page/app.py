@@ -267,6 +267,17 @@ def capturar_lead():
             'errores': ['Token de seguridad inválido. Recarga la página e intenta nuevamente.']
         }), 403
 
+    # Honeypot: campo oculto que solo un bot completa (un usuario real no lo ve).
+    # Se descarta en silencio -sin tocar n8n/Supabase- pero respondiendo 200 como
+    # si hubiera funcionado, para no darle al bot una señal de que fue detectado.
+    if request.form.get('_hp_field', '').strip():
+        log_safe(request.form.get('email', ''), 'HONEYPOT_TRIGGERED')
+        nombre_hp = sanitize_input(request.form.get('nombre', ''), max_length=100)
+        return jsonify({
+            'success': True,
+            'redirect': url_for('gracias', nombre=nombre_hp)
+        }), 200
+
     try:
         # Extraer y sanitizar todos los campos
         nombre = sanitize_input(request.form.get('nombre', ''), max_length=100)

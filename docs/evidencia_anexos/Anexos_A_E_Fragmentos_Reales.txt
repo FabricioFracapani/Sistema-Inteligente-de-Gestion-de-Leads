@@ -1,0 +1,640 @@
+NOTA DE VERSION (M-13): estos fragmentos se extrajeron en vivo de los
+archivos fuente al momento de generar este documento. El commit de git
+que estaba en HEAD en ese momento fue:
+  commit: c4bbbf5a54215315523912532281b5ed110343ea
+  rama:   Master-Demo
+  enlace: https://github.com/Martinlepez031/Sistema-Inteligente-de-Gestion-de-Leads/tree/c4bbbf5a54215315523912532281b5ed110343ea
+Generado: 2026-08-24 01:26:51 UTC
+IMPORTANTE: si este mismo archivo se commitea DESPUES de generarse, el
+commit resultante sera distinto al citado arriba (un commit no puede
+referenciar su propio hash). El hash correcto para citar es el del
+commit inmediatamente POSTERIOR a esta generacion -confirmar en el
+historial de git cual quedo justo despues de este archivo-.
+
+
+
+========================================================================
+ANEXO A - CODIGO FLASK: SECURITY HEADERS
+Fuente: landing_page/app.py (funcion set_security_headers)
+========================================================================
+
+# SECURITY HEADERS (aplicados a TODAS las respuestas)
+# ============================================================
+@app.after_request
+def set_security_headers(response):
+    """Agrega headers de seguridad OWASP recomendados a cada respuesta."""
+
+    # CSP: solo permite recursos del mismo origen + Google Fonts
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "connect-src 'self'; "
+        "frame-src 'none'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self';"
+    )
+    response.headers['Content-Security-Policy'] = csp
+
+    # Protección anti-clickjacking
+    response.headers['X-Frame-Options'] = 'DENY'
+
+    # Evitar MIME-type sniffing
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+
+    # Control de referrer (no filtrar URL completa a externos)
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+    # HSTS (solo en producción con HTTPS)
+    if not app.config['DEBUG']:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+    # Ocultar tecnología del servidor
+    response.headers['Server'] = ''
+
+    # Permissions-Policy: deshabilitar APIs innecesarias del navegador
+    response.headers['Permissions-Policy'] = (
+        'camera=(), microphone=(), geolocation=(), '
+        'payment=(), usb=(), magnetometer=(), gyroscope=()'
+    )
+
+    # Cross-Origin-Opener-Policy
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+
+    return response
+
+
+========================================================================
+ANEXO B - WORKFLOW n8n: Pipeline de Leads con IA.json
+Fuente: n8n_workflow/Pipeline de Leads con IA.json
+========================================================================
+
+--- Nodo Code: Normalizacion ETL + Enriquecimiento (n8n_workflow/Pipeline de Leads con IA.json) ---
+
+// =====================================================
+// CAPA DE PROCESAMIENTO: Normalizacion y Enriquecimiento
+// Pipeline de Leads con IA - TFI UTN FRM
+// =====================================================
+
+function toTitleCase(str) {
+  if (!str) return '';
+  return str.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function normalizePhone(phone) {
+  if (!phone) return '';
+  let cleaned = phone.toString().replace(/[^\d+]/g, '');
+  if (!cleaned.startsWith('+') && cleaned.length >= 10) {
+    cleaned = '+54' + cleaned.replace(/^0+/, '');
+  }
+  return cleaned;
+}
+
+function validateEmail(email) {
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
+}
+
+const item = $input.first().json;
+const payload = (item.body && typeof item.body === 'object') ? item.body : item;
+
+// Mapeo unificado (maneja diferencias entre fuentes)
+const nombre_raw = payload.nombre || payload.first_name || '';
+const apellido_raw = payload.apellido || payload.last_name || '';
+const email_raw = payload.email || '';
+const telefono_raw = payload.telefono || payload.phone || '';
+const mensaje_raw = payload.mensaje || payload.message || '';
+
+
+const email_validado = email_raw.toLowerCase().trim();
+const email_valido = validateEmail(email_validado);
+
+// === Clasificacion heuristica de respaldo (si la IA falla, el lead igual se clasifica) ===
+const texto = ((mensaje_raw || '') + ' ' + (email_validado || '')).toLowerCase();
+const palabras_compra = ['contratar','comprar','comprandolo','presupuesto aprobado','empezar','manana','urgente','firmar','decid','implementar','implementacion','cerremos','factura','transferencia','pago ','lista para','para hoy','para manana','quiere el plan','quiere el servicio','quiero el plan','quiero el servicio'];
+const palabras_soporte = ['no me deja','problema','error 500','error 502','falla','no recibo','perdi acceso','dejaron','dejo de funcionar','ayuda','se queda en ejecucion','no carga','revise','revisar','no funciona'];
+const palabras_spam = ['buy','cheap','viagra','prince','free','congratulations','make money','seo services','compromised','lose 20kg','hot singles','click here','win an iphone','!!!','camarada','transferir fondos','transfer money'];
+const es_spam = palabras_spam.some(function(p){ return texto.includes(p); });
+const es_compra = !es_spam && palabras_compra.some(function(p){ return texto.includes(p); });
+const es_soporte = !es_spam && !es_compra && palabras_soporte.some(function(p){ return texto.includes(p); });
+let fa_class = 'solicita_info';
+let fa_prio = 45;
+if (es_spam) { fa_class = 'spam'; fa_prio = 5; }
+else if (es_compra) { fa_class = 'compra_inmediata'; fa_prio = 85; }
+else if (es_soporte) { fa_class = 'soporte'; fa_prio = 30; }
+
+return [{
+  json: {
+    // Identificacion y trazabilidad
+    id_lead: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16); }),
+    timestamp_ingesta: new Date().toISOString(),
+    fuente: payload.fuente || 'landing_page',
+    url_origen: payload.url_origen || '',
+    ip_origen: payload.ip_origen || '',
+
+    // Datos normalizados
+    nombre: toTitleCase(nombre_raw),
+    apellido: toTitleCase(apellido_raw),
+    email: email_valido ? email_validado : email_raw,
+    telefono: normalizePhone(telefono_raw),
+    mensaje: (mensaje_raw || '').trim(),
+
+    // Validacion
+    email_valido: email_valido,
+    telefono_digitos: (telefono_raw || '').replace(/[^\d]/g, '').length,
+
+    // Clasificacion heuristica de respaldo (la IA real la sobreescribe con el PATCH)
+    ia_clasificacion: fa_class,
+    ia_prioridad: fa_prio,
+    ia_confianza: 0.6,
+    ia_resumen: 'Clasificacion heuristica (IA no disponible): ' + fa_class,
+    ia_respuesta_asunto: null,
+    ia_respuesta_html: null,
+
+    // Campos auxiliares para debug
+    _source: item,
+    _stage: 'normalizado'
+  }
+}];
+
+
+--- System prompt: IA Clasificar Intencion (HTTP Request -> OpenAI, response_format: json_schema) ---
+
+Sos un clasificador de intención de leads para una empresa de consultoría. Analizás el mensaje de un lead y devolvés EXCLUSIVAMENTE los campos definidos por el esquema JSON provisto, sin texto adicional, sin markdown, sin explicaciones.
+
+Categorías permitidas para "clasificacion" (elegí exactamente una):
+- compra_inmediata: expresa intención clara de contratar o comprar YA
+- solicita_info: pide información general sobre servicios, planes o precios, sin urgencia
+- soporte: consulta técnica, problema o queja de un cliente/prospecto
+- spam: mensaje genérico, irrelevante, publicitario o sin sentido
+
+Reglas:
+- "prioridad": entero de 0 a 100 (mayor = más urgente/valioso comercialmente)
+- "confianza": número entre 0.0 y 1.0 (tu certeza en la clasificación)
+- "resumen": máximo 15 palabras, en español
+- No afirmes la existencia de adjuntos, enlaces ni documentos que no se te proporcionen explícitamente en el mensaje del lead.
+
+--- System prompt: IA Generar Email Personalizado (HTTP Request -> OpenAI, response_format: json_schema) ---
+
+Sos un representante comercial profesional de una consultora de software. Generás un email de respuesta personalizado para un lead, en HTML válido, diseño profesional y responsive, devolviendo EXCLUSIVAMENTE los campos definidos por el esquema JSON provisto.
+
+Adaptá el tono según la clasificación del lead:
+- compra_inmediata: directo, ofrecé agendar una llamada hoy con un llamado a la acción claro EN TEXTO (nunca un link).
+- solicita_info: compartí información útil, ofrecé una demo, tono servicial.
+- soporte: mostrá empatía, indicá que derivás a soporte con respuesta en 24h.
+
+Reglas:
+- Saludo con el nombre del lead.
+- Cuerpo personalizado según su mensaje original.
+- Firma SIEMPRE con exactamente estas dos lineas (sin variarlas, sin inventar un nombre de persona): "Equipo Comercial" en la primera linea y "Sistema Inteligente de Gestion de Leads" en la segunda.
+- NO uses placeholders ni texto generico sin completar, ya sea con corchetes (ej. [nombre], [empresa]) o sin ellos (ej. "Tu Nombre", "Nombre del remitente", "Tu Empresa", "[Tu nombre aqui]").
+- No afirmes la existencia de adjuntos, enlaces ni documentos que no se te proporcionen explícitamente: si querés invitar a agendar una reunión, hacelo con una llamada a la acción en texto (por ejemplo "respondé este email para coordinar un horario"), sin inventar URLs de calendario ni de ningún otro tipo.
+
+--- Config REST: Persistir Early (Insert) -> Supabase ---
+
+{
+  "method": "POST",
+  "url": "=https://{{$env.SUPABASE_PROJECT_ID}}.supabase.co/rest/v1/leads",
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{$env.SUPABASE_ANON_KEY}}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{$env.SUPABASE_ANON_KEY}}"
+      },
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      },
+      {
+        "name": "Prefer",
+        "value": "return=representation"
+      }
+    ]
+  }
+}
+
+
+========================================================================
+ANEXO C - SCHEMA SQL: ROW LEVEL SECURITY
+Fuente: database/schema.sql
+========================================================================
+
+--- DDL: CREATE TABLE leads ---
+
+CREATE TABLE leads (
+    id_lead         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre          VARCHAR(100) NOT NULL,
+    apellido        VARCHAR(100),
+    email           VARCHAR(255) NOT NULL,
+    email_hash      VARCHAR(64),           -- SHA-256 del email para búsqueda sin exponer PII
+    telefono        VARCHAR(30),
+    telefono_hash   VARCHAR(64),           -- SHA-256 del teléfono
+    mensaje         TEXT,
+    -- Metadata de captura
+    fuente          VARCHAR(50) NOT NULL DEFAULT 'landing_page',
+    url_origen      VARCHAR(500),
+    ip_origen       INET,                  -- IPv4 o IPv6 (anonimizado: últimos 2 octetos en 0)
+    user_agent      TEXT,
+    timestamp_ingesta TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Resultados de IA
+    ia_clasificacion VARCHAR(50),          -- compra_inmediata, solicita_info, soporte, spam, sin_clasificar
+    ia_prioridad    INTEGER CHECK (ia_prioridad BETWEEN 0 AND 100), -- 0 = spam forzado; NULL = fallback sin dato
+    ia_confianza    DECIMAL(4,3) CHECK (ia_confianza BETWEEN 0 AND 1), -- NULL cuando ia_fallback = true
+    ia_resumen      TEXT,
+    ia_respuesta    TEXT,                  -- email HTML generado por IA
+    ia_fallback     BOOLEAN NOT NULL DEFAULT false, -- true si la IA no devolvio JSON parseable (CF-04)
+    -- Gestión del embudo
+    estado          VARCHAR(30) NOT NULL DEFAULT 'nuevo',
+    responsable     VARCHAR(100),
+    notas_internas  TEXT,
+    -- Auditoría
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+--- Politicas RLS P1 a P11: 7 son CREATE POLICY, 4 (P4, P5, P8, P10/P11) son ausencia deliberada de politica (deny-by-default), documentada en comentario ---
+
+-- POLÍTICAS PARA TABLA leads
+-- ============================================================
+
+-- P1: Cualquiera (incluso anónimo) puede INSERTAR un lead (formulario landing page)
+--     El trigger de la tabla genera automáticamente email_hash y telefono_hash
+CREATE POLICY "anon_can_insert_leads"
+    ON leads FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (true);
+
+-- P1b: Cualquiera (anónimo) puede LEER leads (dashboard Streamlit con anon key)
+--     Habilita la vista de KPIs y detalle sin requerir login de usuario
+CREATE POLICY "anon_can_read_leads"
+    ON leads FOR SELECT
+    TO anon
+    USING (true);
+
+--     Hook para calcular hashes automáticamente al insertar
+CREATE OR REPLACE FUNCTION auto_hash_lead()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.email_hash    := hash_field(NEW.email);
+    NEW.telefono_hash := hash_field(NEW.telefono);
+    NEW.ip_origen     := anonymize_ip(NEW.ip_origen);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trigger_auto_hash_lead
+    BEFORE INSERT ON leads
+    FOR EACH ROW
+    EXECUTE FUNCTION auto_hash_lead();
+
+-- P2: Solo usuarios autenticados (equipo de ventas) pueden LEER leads
+--     Dashboard y equipo de ventas
+CREATE POLICY "authenticated_can_read_leads"
+    ON leads FOR SELECT
+    TO authenticated
+    USING (true);  -- Pueden ver todos los leads
+
+-- P3: Solo usuarios autenticados pueden ACTUALIZAR estado y responsable
+CREATE POLICY "authenticated_can_update_leads"
+    ON leads FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- P4: Nadie anónimo puede LEER ni ACTUALIZAR (solo insertar)
+--     Esto está implícito al no crear políticas SELECT/UPDATE para 'anon'
+
+-- P5: Service role (n8n) tiene bypass total de RLS por defecto en Supabase
+--     No necesita políticas explícitas
+
+-- ============================================================
+-- POLÍTICAS PARA TABLA lead_events
+-- ============================================================
+
+-- P6: Solo service_role (n8n) puede INSERTAR eventos
+--     Los eventos son solo-escritura desde el pipeline
+CREATE POLICY "service_can_insert_events"
+    ON lead_events FOR INSERT
+    TO authenticated
+    WITH CHECK (true);  -- n8n usa service_role que bypass RLS
+
+-- P7: Solo usuarios autenticados pueden LEER eventos (para debugging)
+CREATE POLICY "authenticated_can_read_events"
+    ON lead_events FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- P8: Nadie puede MODIFICAR ni ELIMINAR eventos (append-only)
+--     Sin política UPDATE/DELETE = bloqueado por defecto
+
+-- ============================================================
+-- POLÍTICAS PARA TABLA ia_config
+-- ============================================================
+
+-- P9: Solo service_role (n8n) puede LEER la configuración de IA
+CREATE POLICY "service_can_read_ia_config"
+    ON ia_config FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- P10: Nadie (excepto service_role) puede MODIFICAR prompts
+--      Sin política INSERT/UPDATE/DELETE para otros roles
+
+-- ============================================================
+-- POLÍTICAS PARA TABLA api_keys
+-- ============================================================
+
+-- P11: Solo service_role puede gestionar API keys
+--      Sin políticas públicas = inaccesible para anon/authenticated
+
+-- ============================================================
+
+
+========================================================================
+ANEXO D - DASHBOARD STREAMLIT: KPIs
+Fuente: dashboard/dashboard.py
+========================================================================
+
+--- Conexion a Supabase (lineas 30-41) ---
+
+)
+
+# Conexión a Supabase
+@st.cache_resource
+def init_supabase() -> Client:
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_ANON_KEY")
+    if not url or not key:
+        raise RuntimeError(
+            "Faltan SUPABASE_URL y/o SUPABASE_ANON_KEY. "
+            "Definilas en el entorno antes de iniciar el dashboard."
+        )
+
+--- 5 KPI cards (lineas 189-232) ---
+
+]
+
+# ============================================
+# MÉTRICAS (KPI CARDS)
+# ============================================
+total = len(leads)
+compras = sum(1 for l in leads if l.get("ia_clasificacion") == "compra_inmediata")
+info = sum(1 for l in leads if l.get("ia_clasificacion") == "solicita_info")
+spam = sum(1 for l in leads if l.get("ia_clasificacion") == "spam")
+prioridad_promedio = sum(l.get("ia_prioridad") or 0 for l in leads) / max(total, 1)
+
+col1, col2, col3, col4, col5 = st.columns(5)
+with col1:
+    st.markdown(f"""
+        <div class="metric-card" style="background: linear-gradient(135deg, #1B3A5C 0%, #2E86C1 100%);">
+            <div class="metric-value">{total}</div>
+            <div class="metric-label">Total Leads</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown(f"""
+        <div class="metric-card" style="background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);">
+            <div class="metric-value">{compras}</div>
+            <div class="metric-label">🔥 Compra Inmediata</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col3:
+    st.markdown(f"""
+        <div class="metric-card" style="background: linear-gradient(135deg, #2471a3 0%, #2e86c1 100%);">
+            <div class="metric-value">{info}</div>
+            <div class="metric-label">ℹ️ Solicita Info</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col4:
+    st.markdown(f"""
+        <div class="metric-card" style="background: linear-gradient(135deg, #7d8c8d 0%, #95a5a6 100%);">
+            <div class="metric-value">{spam}</div>
+            <div class="metric-label">🚫 Spam Detectado</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col5:
+    st.markdown(f"""
+        <div class="metric-card" style="background: linear-gradient(135deg, #1e8449 0%, #27ae60 100%);">
+            <div class="metric-value">{prioridad_promedio:.0f}</div>
+
+--- Vista de lista + detalle del lead (lineas 260-303) ---
+
+        emoji_map = {
+            "compra_inmediata": "🔥",
+            "solicita_info": "ℹ️",
+            "soporte": "🛠️",
+            "spam": "🚫"
+        }
+
+        prioridad_class = "priority-high" if prioridad >= 70 else "priority-medium" if prioridad >= 40 else "priority-low"
+
+        with st.container():
+            col1, col2, col3 = st.columns([3, 1, 1])
+
+            with col1:
+                nombre_completo = f"{lead.get('nombre', '')} {lead.get('apellido', '')}".strip()
+                st.markdown(f"""
+                    <div class="lead-card {color_map.get(clasificacion, 'info')}">
+                        <strong>{emoji_map.get(clasificacion, '')} {nombre_completo}</strong>
+                        <span class="{prioridad_class}"> · {prioridad}/100</span><br>
+                        <small>📧 {lead.get('email', '')} · {lead.get('ia_resumen', 'Sin resumen')[:120]}</small>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.caption(f"Fuente: {lead.get('fuente', 'N/A')}")
+                st.caption(f"Estado: {lead.get('estado', 'nuevo')}")
+
+            with col3:
+                if st.button("🔍 Ver", key=f"btn_{lead.get('id_lead')}", use_container_width=True):
+                    st.session_state["lead_seleccionado"] = lead
+
+# ============================================
+# DETALLE DEL LEAD SELECCIONADO
+# ============================================
+if "lead_seleccionado" in st.session_state and st.session_state["lead_seleccionado"]:
+    lead = st.session_state["lead_seleccionado"]
+
+    st.divider()
+    st.markdown("### 🔍 Detalle del Lead")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"**Nombre:** {lead.get('nombre', '')} {lead.get('apellido', '')}")
+        st.markdown(f"**Email:** {lead.get('email', '')}")
+
+
+========================================================================
+ANEXO E - SCRIPT DE PRUEBAS: test_100_leads.py
+Fuente: tests/test_100_leads.py
+========================================================================
+
+--- Cabecera / metodologia (lineas 1-23) ---
+
+"""
+=========================================================================
+SCRIPT DE PRUEBAS AUTOMATIZADAS v3.0 - 100 casos con validacion completa
+Pipeline de Leads con IA - TFI UTN FRM
+=========================================================================
+
+EXPANSION DE 50 A 100 CASOS:
+  - Duplica casos por categoria para poder estadistico
+  - Agrega CP-11: casos adversariales (prompt injection, XSS, SQL injection)
+  - Agrega CP-12: casos multilingues (mezcla espanol/ingles)
+  - Cada caso tiene clasificacion esperada, prioridad esperada y rango LRT
+
+UNIVERSOS DE MEDICION (corregidos):
+  Total enviados:      100
+  Validos (HTTP 200):   90  (100 - 10 invalidos CP-03/04 ampliados)
+  Con email generado:   80  (90 - 10 spam CP-08 ampliados)
+  Con clasificacion IA:  90  (todos los validos pasan por clasificacion)
+                          80  (los que no son spam pasan por email tambien)
+
+USO:
+  python tests/test_100_leads.py
+=========================================================================
+"""
+
+--- Generacion de casos CP-01 como ejemplo (lineas 64-103) ---
+
+def generar_100_casos():
+    casos = []
+
+    # --- CP-01: Compra inmediata (20 casos, era 10) ---
+    mensajes_compra = [
+        "Quiero contratar el servicio ya mismo. Cuando podemos empezar?",
+        "Necesito urgente automatizar los procesos de mi empresa. Llamame hoy.",
+        "Estoy listo para comprar. Me pueden enviar el contrato?",
+        "Tengo el presupuesto aprobado, quiero implementar esta semana.",
+        "URGENTE: necesito el servicio de automatizacion para manana.",
+        "Ya decidi, quiero el plan completo. Como pago?",
+        "Vengo de una recomendacion, quiero contratar ahora mismo.",
+        "Necesito comenzar el proyecto esta semana. Tengo todo listo.",
+        "Presupuesto aprobado, equipo listo. Empezamos el lunes?",
+        "Quiero comprar el servicio premium. Me pasan los datos de facturacion?",
+        "Estoy listo para firmar contrato hoy. Envienme la propuesta.",
+        "Necesito implementar urgente, mi empresa esta perdiendo plata sin esto.",
+        "Ya tome la decision. Cuando pueden empezar con la implementacion?",
+        "Transferencia lista. Necesito factura para hoy mismo.",
+        "Tengo reunion de directorio manana, necesito presupuesto YA.",
+        "Quiero el plan enterprise. Sin demo, directo a contratacion.",
+        "Aprobamos el proyecto internamente. Arrancamos la semana que viene.",
+        "Cerremos el trato hoy. Cual es el proximo paso?",
+        "Presupuesto de USD 50k aprobado. Cuando nos reunimos?",
+        "Llamame urgente al 2615550101, quiero contratar el servicio completo.",
+    ]
+    for i, msg in enumerate(mensajes_compra):
+        casos.append({
+            "id": f"CP-01-{i+1:02d}",
+            "tipo": "compra_inmediata",
+            "categoria": "CP-01",
+            "nombre": f"Compra {i+1}",
+            "apellido": "Test",
+            "email": f"compra.caso{i+1:02d}@test-tfi.local",
+            "telefono": f"+54 261 555{1000+i:04d}",
+            "mensaje": msg,
+            "esperado": {
+                "status": 200,
+                "ia_clasificacion": "compra_inmediata",
+                "prioridad_min": 70,
+
+--- Medicion de LRT por caso (lineas 460-509) ---
+
+        # Clasificar universos
+        es_invalido = caso["esperado"].get("status") == 400
+        es_spam = caso.get("tipo") == "spam"
+        universo = "invalido" if es_invalido else ("spam" if es_spam else "pipeline_completo")
+
+        if status == 200:
+            stats["lrt_flask_sum"] += lrt_flask
+            stats["lrt_flask_count"] += 1
+            if lrt_flask < 5.0:
+                stats["lrt_flask_bajo_5s"] += 1
+            if lrt_flask < 8.0:
+                stats["lrt_flask_bajo_8s"] += 1
+
+        if not es_invalido:
+            stats["total_validos"] += 1
+            stats["total_clasificados"] += 1
+        if not es_invalido and not es_spam:
+            stats["total_con_email"] += 1
+
+        # Simular clasificacion IA para matriz de confusion
+        tipo_real = caso.get("tipo", "desconocido")
+        if tipo_real in ("compra_inmediata", "solicita_info", "soporte", "spam"):
+            clasificaciones_total[tipo_real] += 1
+            # Simular: ~84-88% de acierto por categoria
+            prob_acierto = {
+                "compra_inmediata": 0.90,
+                "solicita_info": 0.87,
+                "soporte": 0.60,
+                "spam": 0.95,
+            }.get(tipo_real, 0.85)
+
+            if random.random() < prob_acierto:
+                clasificaciones_correctas[tipo_real] += 1
+
+        # Progreso
+        pct = (i + 1) / len(casos) * 100
+        bar = "=" * int(pct / 2) + " " * (50 - int(pct / 2))
+        print(f"  [{bar}] {pct:5.1f}% | {icono} {cid:10s} | {tipo:22s} | "
+              f"HTTP={status} | LRT={lrt_flask:.2f}s | U={universo}",
+              end="\r")
+
+        resultados.append({
+            "caso_id": cid,
+            "categoria": caso["categoria"],
+            "tipo": tipo,
+            "universo": universo,
+            "nombre": caso["nombre"],
+            "email": caso["email"],
+            "mensaje": caso["mensaje"][:200],
+            "status_http": status,
+
+--- Exportacion CSV/JSON + metadata (lineas 570-608) ---
+
+
+    # Exportar
+    with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=resultados[0].keys())
+        writer.writeheader()
+        writer.writerows(resultados)
+
+    metadata = {
+        "fecha_ejecucion": datetime.now(timezone.utc).isoformat(),
+        "script_version": "3.0.0",
+        "total_casos": 100,
+        "universo_total": total,
+        "universo_valido": validos,
+        "universo_con_email": con_email,
+        "universo_clasificados": clasificados,
+        "lrt_flask_promedio": round(lrt_avg, 3),
+        "lrt_flask_bajo_5s_pct": round(pct_bajo_5s, 1),
+        "lrt_flask_bajo_8s_pct": round(pct_bajo_8s, 1),
+        "tasa_respuesta_flask_pct": round(tasa_respuesta, 1),
+        "exactitud_ia_global_pct": round(exactitud_global, 1),
+        "exactitud_por_clase": {
+            c: round(clasificaciones_correctas.get(c, 0) / max(clasificaciones_total.get(c, 1), 1) * 100, 1)
+            for c in ["compra_inmediata", "solicita_info", "soporte", "spam"]
+        },
+        "n_por_clase": dict(clasificaciones_total),
+        "nota_metodologica": (
+            "100 casos distribuidos en 12 categorias (CP-01 a CP-12). "
+            "CP-11 agrega casos adversariales (prompt injection, role confusion). "
+            "CP-12 agrega casos multilingues (ingles, portugues, aleman, italiano). "
+            "Universo valido: 90 casos (100 - 10 invalidos). "
+            "Universo con email: 80 casos (90 - 10 spam). "
+            "La clasificacion IA se simula probabilisticamente basada en el "
+            "desempeno observado en la ejecucion real del pipeline con 50 casos."
+        )
+    }
+
+    with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
+        json.dump({"metadata": metadata, "resultados": resultados}, f, ensure_ascii=False, indent=2)

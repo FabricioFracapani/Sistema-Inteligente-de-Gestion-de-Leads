@@ -1,0 +1,76 @@
+========================================================================
+CF-04 - FALLBACK CON CENTINELA + PRIORIDAD 0 PARA SPAM (M-15, m06)
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-22
+========================================================================
+
+PROBLEMA ORIGINAL
+  En el nodo "Parsear: Extraer Clasificacion IA", si la respuesta de la
+  IA no era JSON parseable, el fallback fabricaba datos con apariencia
+  de exito:
+    clasificacion: 'solicita_info', prioridad: 50, confianza: 0.5
+  Esto contamina cualquier metrica de exactitud/confianza: un fallo de
+  la IA queda indistinguible de una clasificacion real de baja
+  confianza. Ademas, "prioridad || 50" y "confianza || 0.5" pisaban
+  incluso un valor legitimo de la IA si esta devolvia 0 (0 es falsy en
+  JS), y no habia ninguna regla que forzara prioridad=0 para spam.
+
+CAMBIOS APLICADOS EN n8n_workflow/Pipeline de Leads con IA.json
+
+  1) Nodo "Parsear: Extraer Clasificacion IA":
+     - Si JSON.parse falla: ia_clasificacion='sin_clasificar',
+       ia_prioridad=null, ia_confianza=null, ia_fallback=true.
+     - Si JSON.parse tiene exito: se preservan los valores reales de la
+       IA (con "??" en vez de "||", para no pisar un 0 legitimo),
+       ia_fallback=false.
+     - Regla de negocio (m06): si ia_clasificacion === 'spam', se
+       fuerza ia_prioridad = 0 sin excepcion, sea cual sea el valor
+       que devolvio el modelo.
+     - Validado con Node.js simulando los 3 casos (spam con prioridad
+       alta devuelta por error, no-spam exitoso, fallback): el forzado
+       de spam y el centinela de fallback funcionan como se espera.
+
+  2) Nodo "Actualizar IA en Supabase":
+     - Se agrego el campo ia_fallback al PATCH que persiste el
+       resultado en Supabase.
+     - BONUS DE SEGURIDAD (relacionado, mismo archivo): este nodo tenia
+       la service_role key de Supabase hardcodeada en texto plano en
+       los headers apikey/Authorization (ya reportado y ya rotado por
+       vos). Se reemplazo por {{$env.SUPABASE_SERVICE_ROLE_KEY}},
+       igual que ya hacia el nodo "Persistir Early (Insert)" con la
+       anon key. Falta configurar esa variable de entorno en n8n
+       (Settings > Environment Variables) con el valor de la key NUEVA
+       ya rotada.
+
+CAMBIOS EN database/schema.sql
+  - Nueva columna: ia_fallback BOOLEAN NOT NULL DEFAULT false.
+  - ia_clasificacion: comentario actualizado (ahora incluye
+    'sin_clasificar' como valor posible).
+  - ia_prioridad: la constraint CHECK (ia_prioridad BETWEEN 1 AND 100)
+    NO permitia guardar 0. Se cambio a BETWEEN 0 AND 100 -sin este
+    cambio, forzar prioridad=0 en spam hubiera hecho fallar el PATCH a
+    Supabase con un error de constraint en cada lead de spam-.
+
+PENDIENTE - REQUIERE ACCION MANUAL TUYA (no lo pude hacer yo)
+  1) Migracion de base de datos: correr
+       database/migrations/2026-08-22_ia_fallback_cf04.sql
+     en Supabase > SQL Editor. Solo tengo la anon key (no alcanza para
+     DDL: ALTER TABLE). Sin esto, el PATCH con ia_fallback va a fallar
+     ("column does not exist") y el de prioridad=0 en spam va a fallar
+     por la constraint vieja.
+  2) Configurar en n8n (Settings > Environment Variables) la variable
+     SUPABASE_SERVICE_ROLE_KEY con el valor de la key NUEVA (rotada).
+  3) Sincronizar el workflow en vivo con el archivo corregido (mismo
+     mecanismo que en c05_m07_sync_n8n.txt: reimportar el JSON o pegar
+     los cambios a mano en el nodo "Parsear: Extraer Clasificacion IA"
+     y en "Actualizar IA en Supabase").
+  4) Verificar con 1 lead de prueba: un caso de spam deberia guardar
+     ia_prioridad=0 en Supabase.
+
+NOTA METODOLOGICA
+  ia_prioridad e ia_confianza ahora pueden ser NULL en Supabase cuando
+  ia_fallback=true. Cualquier calculo de "prioridad promedio" o
+  "confianza promedio" en el dashboard/analisis deberia filtrar
+  WHERE ia_fallback = false (o excluir NULLs), para no mezclar leads
+  sin clasificar real con leads clasificados.
+========================================================================

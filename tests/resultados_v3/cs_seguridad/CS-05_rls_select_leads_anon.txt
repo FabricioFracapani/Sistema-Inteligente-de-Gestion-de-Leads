@@ -1,0 +1,25 @@
+Comando: curl -s -i "$SUPABASE_URL/rest/v1/leads?select=nombre,email,mensaje&limit=3" -H apikey -H Authorization Bearer (anon key)
+---
+HTTP/2 200 
+date: Sat, 22 Aug 2026 17:08:35 GMT
+content-type: application/json; charset=utf-8
+content-range: 0-2/*
+cf-ray: a2f37af65c67b273-SCL
+cf-cache-status: DYNAMIC
+set-cookie: __cf_bm=mN39WkFlNwqPHfKxVaz_On2U7HOZQKvh830OSuxFakc-1787418514.9396162-1.0.1.1-KncwHlyKbdiJQKCgea_xduLkRZaVWtZsjE1S8aGfwtsE4zUocNPSlGgp3VajN..EQrrelQ36wmfjNjwUL5dVZ1cFJmT.ogGkVULSi.HrX4z07XhihsthvXhjFlc5FZxP; HttpOnly; SameSite=None; Secure; Path=/; Domain=supabase.co; Expires=Sat, 22 Aug 2026 17:38:35 GMT
+content-location: /leads?limit=3&select=nombre%2Cemail%2Cmensaje
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+vary: Accept-Encoding
+x-content-type-options: nosniff
+content-profile: public
+sb-gateway-version: 1
+sb-project-ref: aczsahahbstaojidxeun
+sb-request-id: 01a02a72-15ff-769b-91ba-4f32f0953cfb
+x-envoy-attempt-count: 1
+x-envoy-upstream-service-time: 10
+alt-svc: h3=":443"; ma=86400
+
+[{"nombre":"Compra 1","email":"compra.caso01@test-tfi.local","mensaje":"Quiero contratar el servicio ya mismo. Cuando podemos empezar?"}, 
+ {"nombre":"Compra 2","email":"compra.caso02@test-tfi.local","mensaje":"Necesito urgente automatizar los procesos de mi empresa. Llamame hoy."}, 
+ {"nombre":"Compra 3","email":"compra.caso03@test-tfi.local","mensaje":"Estoy listo para comprar. Me pueden enviar el contrato?"}]

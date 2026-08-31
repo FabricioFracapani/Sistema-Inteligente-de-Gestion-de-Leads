@@ -1,0 +1,130 @@
+========================================================================
+EXPLICACION - POR QUE SE DESCARTARON LOS DATOS VIEJOS DE 100/65 CASOS
+Y SE REEMPLAZARON POR UNA CORRIDA LIMPIA
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-23
+========================================================================
+
+ORIGEN DE LA INVESTIGACION
+  La devolucion academica (Devolucion_TFI_Gestion_de_Leads_v7.pdf) valida
+  el 96,9% de exactitud global (Tabla 10/11, 63/65 casos) como
+  "reproducible a partir del Anexo F". Al preparar el Anexo E (codigo
+  real), se noto que tests/test_100_leads.py tiene un bloque que SIMULA
+  la clasificacion de la IA con random.random() en vez de leerla de
+  Supabase, con esta nota textual en su propio JSON de salida:
+    "La clasificacion IA se simula probabilisticamente basada en el
+    desempeno observado en la ejecucion real del pipeline con 50 casos."
+  Esto encendio la alarma: habia que confirmar si el 96,9% publicado
+  salio de esa simulacion o de datos reales.
+
+METODO DE VERIFICACION
+  Se identificaron TODAS las fuentes de datos existentes en el repo que
+  dicen medir la clasificacion sobre los mismos 65 casos etiquetados
+  (CP-01, CP-02, CP-06/07, CP-08), y se comparo caso por caso:
+
+  1) tests/resultados_v3/tabla_matriz_confusion.txt +
+     tabla_exactitud_por_clase.txt (generados 14/08)
+       57/65 = 87,7%  (compra 17/20, info 22/25, soporte 8/10, spam 10/10)
+
+  2) tests/resultados_v3/anexo_f_100_casos_real.csv (15/08)
+       56/65 = 86,2%  (compra 17/20, info 20/25, soporte 9/10, spam 10/10)
+
+  3) tests/resultados_v3/resultados_100_pruebas.json, campo
+     "exactitud_por_clase" (SIMULACION con random.random(), corrida 18/08)
+       90,8% global -- este numero cambia en cada ejecucion del script
+       porque no fija semilla (no hay random.seed() en test_100_leads.py).
+       compra 95,0% / info 88,0% / soporte 80,0% / spam 100,0%.
+
+  4) Tabla F.1 dentro del .docx (TFI_..._CORREGIDO_v7.docx) -- la que
+     efectivamente leyo y valido el auditor:
+       63/65 = 96,9%  (compra 20/20, info 23/25, soporte 10/10, spam 10/10)
+       (extraida programaticamente del XML del docx: 63 filas dicen
+       "Acierto", 2 dicen "Error", ambas de tipo Info->soporte)
+
+RESULTADO DE LA COMPARACION
+  Las 4 fuentes dan 4 numeros distintos. Mas grave: comparando caso por
+  caso los mismos IDs (CP-02-20, CP-02-21, CP-02-23 / "Info 20/21/23"),
+  el CSV del repo y la Tabla F.1 del docx no coinciden ni en CUALES
+  casos fallan ni en COMO fallan:
+
+    Caso            CSV del repo                    Tabla F.1 del .docx
+    CP-02-20/Info20 solicita_info->compra_inmediata  solicita_info->solicita_info
+                     (Error)                          (Acierto)
+    CP-02-21/Info21 solicita_info->compra_inmediata  solicita_info->soporte
+                     (Error)                          (Error)
+    CP-02-23/Info23 solicita_info->compra_inmediata  solicita_info->soporte
+                     (Error)                          (Error)
+
+  Se descarta la hipotesis de la simulacion (random.random()): el 90,8%
+  simulado no coincide con el 96,9% publicado, y ademas la simulacion no
+  es reproducible (sin semilla fija, da un numero distinto cada vez que
+  se corre el script).
+
+  Pero TAMPOCO se pudo confirmar que el 96,9% salga de datos reales
+  trazables: no coincide con ninguno de los dos archivos "reales" que
+  existen en el repositorio (tabla de 14/08 ni anexo_f_100_casos_real.csv
+  de 15/08). No se encontro en el repositorio, en n8n, ni en Supabase
+  ningun registro adicional que reproduzca exactamente la Tabla F.1 del
+  documento.
+
+  Conclusion: el origen real de los numeros publicados (96,9%, Tabla 10,
+  Tabla 11) no se puede verificar con la evidencia disponible. Se
+  descarta como no trazable.
+
+DECISION TOMADA
+  Se elimino todo el corpus de datos viejo (ver lista abajo) y se corrio
+  una medicion nueva, unica y completamente trazable sobre los mismos 65
+  casos etiquetados, con el pipeline REAL ya corregido en esta sesion
+  (nodos IA migrados a HTTP Request con response_format: json_schema,
+  modelo pineado a gpt-4o-mini-2024-07-18, fallback con centinela
+  sin_clasificar, prioridad 0 forzada en spam).
+
+  Resultado de la corrida limpia: ver
+  tests/resultados_v3/anexo_f_65_casos_limpio.txt (numeros exactos,
+  matriz de confusion e IC de Wilson recalculados) y
+  tests/resultados_v3/anexo_f_65_casos_limpio.csv (detalle caso por caso).
+
+  IMPORTANTE: el numero de esta corrida limpia puede diferir del 96,9%
+  publicado -es esperable y es correcto que difiera, porque ademas de
+  ser una medicion nueva, el pipeline que la genero ya no es el mismo
+  que corrio el 18/08 (se corrigieron varios bugs reales en el camino:
+  ver tests/resultados_v3/respuesta_devolucion_v7.md). Aunque el numero
+  baje respecto del 96,9% original, mientras se mantenga por encima del
+  80% la hipotesis del trabajo (condicion de refutacion iii) sigue sin
+  refutarse.
+
+ARCHIVOS ELIMINADOS (quedan en el historial de git, no se pierden)
+  - tests/resultados_v3/tabla_matriz_confusion.txt
+  - tests/resultados_v3/tabla_exactitud_por_clase.txt
+  - tests/resultados_v3/matriz_confusion.csv
+  - tests/resultados_v3/anexo_f_100_casos_real.csv
+  - tests/resultados_v3/resultados_100_pruebas.csv
+  - tests/resultados_v3/resultados_100_pruebas.json
+  - tests/resultados_v3/resumen_metricas_100.txt
+  - tests/resultados_v3/lrt_pipeline_real_n8n.csv
+  - tests/resultados_v3/tabla_metricas_ejecucion.txt
+  - tests/resultados_v3/tabla_resultados_oe7.txt
+  Para recuperarlos si hiciera falta: git log --all --  tests/resultados_v3/<archivo>
+
+RIESGO PENDIENTE SIN RESOLVER: tests/test_100_leads.py
+  El bloque de simulacion (random.random() con prob_acierto por clase)
+  SIGUE en tests/test_100_leads.py -no se toco el script-. Si se vuelve
+  a correr ese script y alguien reutiliza su campo "exactitud_por_clase"
+  o "exactitud_ia_global_pct" pensando que es un dato real, se repite el
+  mismo problema. Recomendacion: cuando tengas tiempo, o eliminar ese
+  bloque o renombrar claramente esos campos como "exactitud_SIMULADA_..."
+  para que no se puedan confundir con datos reales. No se hizo en esta
+  sesion para no tocar mas cosas de las pedidas.
+
+QUE FALTA DESPUES DE ESTO
+  Con los numeros nuevos de anexo_f_65_casos_limpio.txt hay que:
+  1. Reemplazar la Tabla F.1 completa en el .docx (borrar la vieja,
+     pegar la nueva -formato similar, mismas columnas-).
+  2. Recalcular y reemplazar Tabla 10 (matriz de confusion) y Tabla 11
+     (IC de Wilson) con los valores nuevos.
+  3. Reemplazar toda mencion a "96,9%" en Resumen/Abstract/Conclusiones
+     por el numero nuevo.
+  4. Esto tambien conecta con C-03 de la devolucion (la media de LRT
+     mezclaba dos rutas): al rehacer Tabla F.1 de cero, aprovechar para
+     aplicar esa correccion tambien si todavia no se hizo.
+========================================================================

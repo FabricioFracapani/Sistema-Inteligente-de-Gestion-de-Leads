@@ -1,0 +1,236 @@
+========================================================================
+DATOS REALES FINALES - REEMPLAZO DE CIFRAS PROVISIONALES
+Pipeline de Leads con IA - TFI UTN FRM
+========================================================================
+Origen: ejecucion real completa del pipeline (Flask -> n8n -> GPT-4o-mini
+-> Supabase), NO simulacion. 100 casos de prueba (CP-01 a CP-12) enviados
+en una unica corrida controlada.
+
+Fecha de ejecucion: 2026-08-18
+Fuente en Supabase: leads.fuente = 'test_100_v3'
+Filas persistidas: 91 (persistencia de leads procesados = 100%, 91/91).
+Aparte: 1 anomalia de validacion en Flask (CP-04-05, ver Nota Metodologica 3)
+-- no es una perdida de datos, es un lead que debio ser rechazado (HTTP 400)
+y en cambio se acepto y persistio como valido.
+Script de envio: tests/test_100_leads.py
+Datos crudos de respaldo: tests/resultados_v3/resultados_100_pruebas.json
+========================================================================
+
+
+------------------------------------------------------------------------
+1) TABLA 13 - MATRIZ DE CONFUSION (reemplaza la version provisional)
+------------------------------------------------------------------------
+Tabla 13
+Matriz de confusion de la clasificacion de intencion del lead mediante GPT-4o-mini
+(100 casos de prueba, CP-01 a CP-12)
+
+                          Compra inmediata   Solicita informacion   Soporte   Spam
+Compra inmediata                20                    0               0       0    (n=20)
+Solicita informacion             0                   23               2       0    (n=25)
+Soporte                          0                    0              10       0    (n=10)
+Spam                             0                    0               0      10    (n=10)
+
+Nota. Exactitud global = 96,9% (63/65 casos). Los valores en la diagonal
+principal representan predicciones correctas. El modelo GPT-4o-mini se
+ejecuto con temperatura 0,2, max_tokens 200 y formato de respuesta JSON
+forzado. Datos obtenidos de ejecucion real del pipeline completo
+(n8n + OpenAI + Supabase), 2026-08-18. Fuente: elaboracion propia.
+
+
+------------------------------------------------------------------------
+2) TABLA 14 - EXACTITUD POR CATEGORIA (reemplaza la version provisional)
+------------------------------------------------------------------------
+Tabla 14
+Exactitud de clasificacion por categoria de intencion del lead con
+intervalos de confianza del 95%
+
+Categoria               n    Aciertos   Exactitud    IC 95%
+Compra inmediata        20      20       100,0%      [83,9%, 100,0%]
+Solicita informacion    25      23        92,0%      [75,0%, 97,8%]
+Soporte                 10      10       100,0%      [72,2%, 100,0%]
+Spam                    10      10       100,0%      [72,2%, 100,0%]
+------------------------------------------------------------------------
+Exactitud global        65      63        96,9%
+------------------------------------------------------------------------
+
+Nota. n = cantidad de casos de prueba para esa categoria. El intervalo de
+confianza del 95% se calculo mediante el metodo de Wilson. Los unicos 2
+errores correspondieron a mensajes de solicita_info clasificados como
+soporte. Fuente: elaboracion propia.
+
+
+------------------------------------------------------------------------
+3) TEXTO 5.4.2 - EXACTITUD DE IA (reemplaza el parrafo "87,7%...")
+------------------------------------------------------------------------
+La exactitud global sobre las cuatro categorias fue del 96,9 % (63/65
+casos), medida sobre la ejecucion real y completa del pipeline
+(Flask -> n8n -> GPT-4o-mini -> Supabase), no sobre datos simulados. Por
+categoria: compra_inmediata 100 % (20/20), solicita_info 92 % (23/25, IC
+95 % [75,0 %, 97,8 %]), soporte 100 % (10/10) y spam 100 % (10/10). Los
+dos unicos errores de clasificacion correspondieron a mensajes de la
+categoria solicita_info clasificados erroneamente como soporte,
+consistente con el patron de confusion lexica ya descripto en la seccion
+L3 del Capitulo 6.
+
+NOTA PARA EL AUTOR: en el texto viejo, "soporte" era la categoria con
+MENOR exactitud (80%) y se usaba como ejemplo de solapamiento semantico
+en la seccion 6.2 (discusion, cita a Zhao et al. 2023). Con los datos
+reales esa categoria paso a 100% y es "solicita_info" la que baja al
+92%. Hay que revisar y ajustar ese parrafo de discusion en 6.2 para que
+no contradiga la Tabla 14 nueva.
+
+
+------------------------------------------------------------------------
+4) TEXTO 5.4.1 - LRT PIPELINE (reemplaza el parrafo "4,2 segundos...")
+------------------------------------------------------------------------
+El LRT Pipeline promedio fue de 3,29 segundos (s = 1,45 s), medido de
+punta a punta desde timestamp_ingesta hasta la actualizacion con
+clasificacion real en Supabase (n=91). El 98,9 % de los eventos (90/91)
+se completo por debajo del umbral de 8 segundos establecido en la
+hipotesis, y el 94,5 % (86/91) por debajo de los 5 segundos de
+referencia. Un unico evento supero los 8 segundos (11,62 s, valor
+maximo registrado).
+
+DATO OPCIONAL (no reemplaza nada obligatoriamente, pero tambien se midio
+real en esta corrida): LRT Flask (fast ack) promedio = 2,12 s, 100% de
+los casos (91/91) bajo 8s y bajo 5s. El valor provisional actual en el
+documento es 3,2s (s=0,8s) - si se quiere actualizar tambien, el real es
+mejor (mas rapido).
+
+
+------------------------------------------------------------------------
+5) TABLA 9 - VERIFICACION DE HIPOTESIS (reemplaza la tabla actual)
+------------------------------------------------------------------------
+Tabla 9
+Verificacion de hipotesis: condiciones de refutacion y resultados
+
+Condicion refutacion                    Resultado             Refuta hipotesis?
+(i) >5 eventos validos superan 8s       1 evento >8s          No
+(ii) Tasa de persistencia <95%          100% (91/91) de       No
+                                         leads procesados
+(iii) Exactitud IA <80% (40+ casos)     96,9% (63/65)         No
+(iv) Evento perdido sin registro        0 perdidos            No
+
+Nota. Fuente: elaboracion propia. Ejecucion real, 2026-08-18. La fila (ii)
+mide exito de almacenamiento (ningun lead procesado se perdio), no exito
+de validacion. Aparte de la tasa de persistencia, se detecto 1 anomalia
+de validacion en Flask: CP-04-05 (telefono invalido) debio devolver HTTP
+400 y en cambio devolvio HTTP 200, persistiendose como lead valido. Ver
+Anexo J / seccion de limitaciones para el detalle de esta anomalia.
+
+
+------------------------------------------------------------------------
+6) UNIVERSO DE CORREOS GENERADOS (reemplaza "hoy es 0")
+------------------------------------------------------------------------
+72 correos generados sobre 91 leads procesados en la corrida real.
+
+19 leads NO generaron correo por haber sido clasificados como "spam" por
+la IA real:
+  - 10 de la categoria CP-08 (spam deliberado, comportamiento esperado)
+  - 9 casos limite/adversariales de otras categorias (duplicados,
+    mensajes de solo simbolos/numeros, inyeccion HTML, casos
+    adversariales de CP-11) que el modelo tambien juzgo como spam. Este
+    es un hallazgo real interesante: el modelo tiende a marcar mensajes
+    ambiguos o degenerados como spam, no solo los disenados para serlo.
+    Puede mencionarse como dato adicional en la seccion de discusion.
+
+
+------------------------------------------------------------------------
+7) ANEXO H - EJEMPLO REAL DE EMAIL GENERADO POR IA
+------------------------------------------------------------------------
+CORRECCION: no hay bug de encoding. Se verifico byte a byte contra
+Supabase (curl + xxd) y los acentos estan correctamente guardados en
+UTF-8 (e.g. "e9" = e con tilde, "f3" = o con tilde). El caracter de
+reemplazo que se vio antes fue introducido por un error en el script de
+analisis usado para este documento (una conversion latin1->utf8 mal
+aplicada sobre texto que ya estaba bien), no por el pipeline. El texto
+de abajo es la captura textual exacta, verificada, sin ninguna
+correccion manual.
+
+Lead: Info 1 Test
+Clasificacion IA: solicita_info (prioridad 50, confianza 0.9)
+Resumen IA: "Interés en servicios de automatización."
+
+Cuerpo del email generado por IA (texto exacto, verificado):
+--------------------------------------------------------------------
+Hola Info 1 Test,
+
+Gracias por tu interés en nuestros servicios de automatización. Nos
+complace saber que estás considerando cómo podemos ayudarte a optimizar
+tus procesos.
+
+Te comparto algunos enlaces a recursos útiles que describen nuestras
+soluciones de automatización y cómo han beneficiado a otros clientes:
+  - Servicios de Automatización
+  - Casos de Éxito
+
+Además, me gustaría ofrecerte una demostración personalizada para que
+puedas ver nuestras soluciones en acción. Por favor, házmelo saber si
+te gustaría agendar una llamada y coordinar una fecha y hora que te
+convenga.
+
+Quedo a tu disposición para cualquier consulta adicional.
+
+Saludos cordiales,
+Equipo de Consultora de Software
+--------------------------------------------------------------------
+
+
+========================================================================
+NOTAS METODOLOGICAS PARA EL AUTOR
+========================================================================
+
+1) CAMBIO DE METODOLOGIA (no es solo cambio de numeros)
+   El parrafo existente en el documento dice: "Validacion funcional
+   controlada con 100 eventos SIMULADOS durante 5 dias" (ubicado
+   alrededor del parrafo 300 del .docx, cerca de la Tabla 6). Esto ya
+   no es correcto: la validacion final se hizo con 100 eventos REALES
+   de punta a punta (Flask -> n8n -> OpenAI -> Supabase -> Gmail) en
+   una unica corrida de aproximadamente 15 minutos, no simulada ni
+   distribuida en 5 dias. Hay que reescribir esa frase, no solo las
+   cifras que dependen de ella.
+
+2) BUGS REALES ENCONTRADOS Y CORREGIDOS DURANTE LA VALIDACION
+   (util para la seccion de limitaciones o como anecdota tecnica del
+   proceso de desarrollo, opcional):
+   a) El nodo "Actualizar IA en Supabase" (PATCH) referenciaba un nodo
+      de n8n que nunca se ejecuta en la rama de leads clasificados como
+      spam, lo que hacia fallar silenciosamente la actualizacion de la
+      clasificacion real para esos casos (se quedaban con el valor
+      heuristico de respaldo). Corregido condicionando la expresion a
+      la clasificacion antes de leer ese nodo.
+   b) Las credenciales de los nodos IA (HTTP Request a OpenAI) no
+      estaban vinculadas tras migrar del nodo nativo openAi a
+      httpRequest generico.
+   c) El nodo Gmail tenia el destinatario y cuerpo hardcodeados con
+      datos de prueba en vez de las expresiones dinamicas del lead.
+   d) El PATCH usaba la SUPABASE_ANON_KEY, bloqueada por RLS para
+      UPDATE (solo 'authenticated'/service_role puede actualizar,
+      segun database/schema.sql policy "authenticated_can_update_leads").
+      Se cambio a SUPABASE_SERVICE_ROLE_KEY para el nodo de PATCH.
+   e) Bug de encoding de tildes/enies aun pendiente de resolver (ver
+      punto 7 arriba).
+
+3) ANOMALIA CP-04-05 (telefono_invalido)
+   Un caso de telefono invalido que deberia haber devuelto HTTP 400
+   devolvio HTTP 200 y se persistio como lead valido. Por eso hay 91
+   filas en Supabase en vez de las 90 esperadas. No afecta la matriz de
+   confusion (esa categoria no tiene clasificacion esperada definida),
+   pero si se quiere reportar el universo total de leads persistidos
+   con precision, es 91 (no 90). Vale la pena revisar la validacion de
+   telefono en landing_page/app.py o en el caso de prueba CP-04-05
+   especifico si se quiere prolijidad total.
+
+4) TRAZABILIDAD / REPRODUCIBILIDAD
+   - Script que genero los 100 casos y los envio: tests/test_100_leads.py
+   - Datos crudos (HTTP status, LRT Flask por caso):
+     tests/resultados_v3/resultados_100_pruebas.json/.csv
+   - Los numeros reales de este archivo se calcularon consultando
+     directamente la tabla leads de Supabase (REST API, filtro
+     fuente=eq.test_100_v3) y cruzando por email contra la clasificacion
+     esperada definida en generar_100_casos() de test_100_leads.py.
+   - IMPORTANTE: la tabla leads fue vaciada (TRUNCATE) antes de esta
+     corrida final, asi que las 91 filas con fuente=test_100_v3
+     corresponden integramente a esta ejecucion y no estan mezcladas
+     con pruebas manuales anteriores.
+========================================================================

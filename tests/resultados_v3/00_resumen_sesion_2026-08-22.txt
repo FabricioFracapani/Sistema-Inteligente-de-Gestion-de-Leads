@@ -1,0 +1,198 @@
+========================================================================
+RESUMEN DE SESION - 2026-08-22
+TFI - Sistema Inteligente de Gestion de Leads
+Bloque metodologico / correcciones post-auditoria
+========================================================================
+Este documento indexa todo lo que se hizo en esta sesion de trabajo,
+en orden cronologico, con los archivos que corresponden a cada punto.
+Sirve como registro/evidencia de la sesion, no reemplaza los documentos
+individuales -cada uno tiene el detalle completo-.
+
+------------------------------------------------------------------------
+1) R-03 - REPLICACION (M-05): 3 corridas reales sobre 65 casos etiquetados
+------------------------------------------------------------------------
+Se corrio el pipeline real (Flask -> n8n -> GPT-4o-mini -> Supabase) 3
+veces sobre los 65 casos con clasificacion esperada (CP-01, CP-02,
+CP-06/07, CP-08). Se desactivaron Gmail/Slack en n8n para evitar envios
+reales durante la prueba (reactivar despues).
+
+Resultado: exactitud 93.8% / 96.9% / 98.5% -> media 96.4% +/- 2.4% desvio.
+Estabilidad: 62/65 casos (95.4%) con la misma clasificacion en las 3
+corridas.
+
+Archivos:
+  tests/test_r03_replicacion.py
+  tests/resultados_v3/r03_replicacion.csv / .json / _resumen.txt
+
+------------------------------------------------------------------------
+2) M-07 - Evidencia HTML injection (CP-10-05)
+------------------------------------------------------------------------
+Se consulto Supabase por el caso de inyeccion HTML/XSS ya cargado. El
+mensaje "<b>consulta</b> <script>alert('xss')</script>..." quedo
+persistido como "consulta alert('xss') sobre automatizacion" -tags
+removidos (stripping), no crudo ni HTML-escapado-. Mecanismo:
+sanitize_input() en landing_page/app.py (regex remueve tags HTML).
+
+Archivo: tests/resultados_v3/m07_html_injection.txt
+
+------------------------------------------------------------------------
+3) C-04 - Denominador independiente de persistencia (logs de Flask)
+------------------------------------------------------------------------
+Se conto en el log de aplicacion de Flask (no en Supabase) los eventos
+aceptados HTTP 200 y reenviados a n8n: 193 de 196 intentos (98.5%),
+cruzado con el log de acceso werkzeug (193x200, 2x500, 1x504). Los 3
+casos fallidos coinciden en horario con los 3 "None" de R-03 corrida 1.
+
+Archivos:
+  tests/resultados_v3/c04_denominador_persistencia.txt
+  tests/resultados_v3/c04_flask_log_raw.log
+
+------------------------------------------------------------------------
+4) M-02 - Autenticacion del dashboard / Limitacion L8
+------------------------------------------------------------------------
+El dashboard Streamlit usa la anon key de Supabase y NO hace login real
+(SUPABASE_AUTH_EMAIL/PASSWORD vacios en .env). La policy RLS
+"anon_can_read_leads" (USING true) da lectura irrestricta de toda la
+tabla leads a cualquiera con la anon key, sin autenticarse. RLS activo
+a nivel motor, pero sin control de acceso real para lectura.
+
+Archivo: tests/resultados_v3/m02_auth_dashboard_l8.txt
+
+------------------------------------------------------------------------
+5) C-05 + M-07 - Prompts de n8n corregidos + response_format json_schema
+------------------------------------------------------------------------
+En n8n_workflow/Pipeline de Leads con IA.json:
+  - Eliminado el link generico de calendario en el prompt del email;
+    agregada la regla "no afirmes adjuntos/enlaces/documentos que no se
+    te proporcionen" en ambos prompts IA.
+  - Los 2 nodos OpenAI (nativos, deprecados, sin soporte de
+    response_format) se reemplazaron por nodos HTTP Request que llaman
+    directo a la API de OpenAI con response_format: json_schema
+    (strict), reusando la misma credencial. Validado con Node.js
+    (incluye casos con comillas/backslashes en el mensaje).
+  - Los 2 nodos "Parsear" se actualizaron para leer
+    choices[0].message.content (formato real de la API).
+
+Pendiente (accion tuya, no hecha por mi): sincronizar el n8n EN VIVO
+(Docker) con este JSON -reimportar o pegar a mano-.
+Archivo: tests/resultados_v3/c05_m07_sync_n8n.txt
+
+------------------------------------------------------------------------
+6) HALLAZGO DE SEGURIDAD CRITICO - service_role key hardcodeada
+------------------------------------------------------------------------
+Durante el punto 5 se encontro la service_role key de Supabase (bypassea
+RLS por completo) en texto plano en el nodo "Actualizar IA en Supabase"
+del JSON de n8n -commiteada y YA PUSHEADA a GitHub (commit 61afff0,
+origin/Master-Demo, lineas 535 y 539 del archivo en ese commit-.
+  - Vos ROTASTE la key en Supabase (confirmado por vos en la sesion).
+  - Se reemplazo el valor hardcodeado por {{$env.SUPABASE_SERVICE_ROLE_KEY}}
+    en el JSON (mismo patron que ya usaba SUPABASE_ANON_KEY).
+Pendiente (accion tuya): cargar SUPABASE_SERVICE_ROLE_KEY (la NUEVA) como
+variable de entorno real del contenedor Docker de n8n -no vía UI, es una
+env var real del proceso, igual que SUPABASE_ANON_KEY/SUPABASE_PROJECT_ID-.
+Quedaste en verlo despues; no esta hecho todavia.
+
+------------------------------------------------------------------------
+7) CF-04 - Fallback con centinela + prioridad 0 forzada en spam (M-15, m06)
+------------------------------------------------------------------------
+En el nodo "Parsear: Extraer Clasificacion IA":
+  - Fallback (JSON no parseable): clasificacion='sin_clasificar',
+    prioridad=null, confianza=null, ia_fallback=true (antes fabricaba
+    'solicita_info'/50/0.5, indistinguible de un acierto real).
+  - Bug corregido de paso: "||" reemplazado por "??" (un prioridad:0
+    legitimo de la IA ya no se pisaba con 50).
+  - Regla de negocio: spam siempre fuerza prioridad=0.
+  - Se agrego ia_fallback al PATCH a Supabase.
+Se encontro que la constraint CHECK (ia_prioridad BETWEEN 1 AND 100) no
+permitia guardar 0 -se corrigio a BETWEEN 0 AND 100 en schema.sql-.
+
+Pendiente (accion tuya): correr la migracion SQL en Supabase (SQL Editor,
+requiere permisos DDL que la anon key no tiene):
+  database/migrations/2026-08-22_ia_fallback_cf04.sql
+y sincronizar el n8n en vivo (mismo mecanismo que el punto 5).
+
+Archivos:
+  tests/resultados_v3/cf04_fallback_m15_m06.txt
+  database/migrations/2026-08-22_ia_fallback_cf04.sql
+  database/schema.sql (modificado)
+
+------------------------------------------------------------------------
+8) M-14 - Anexos G e I regenerados (fechados DESPUES de la corrida)
+------------------------------------------------------------------------
+Anexo G e I (n8n y Dashboard) estaban fechados 2026-08-05, 13 dias ANTES
+de la corrida real (18/08) que documentan -y el Anexo G decia "v6/6.0.0",
+sin relacion con el workflow real ("v3") ni con el documento ("v7").
+
+  - Workflow renombrado de "v3" a "v7" (n8n_workflow/...json).
+  - generar_anexo_G.py reescrito: arma el encabezado desde el JSON real
+    y estampa fecha de generacion en cada corrida.
+  - generar_anexo_I.py (nuevo): no existia generador, era texto a mano
+    -y estaba desactualizado (faltaba la fuente test_100_v3)-. Ahora
+    extrae KPIs/filtros/cache/versiones de dashboard.py con regex.
+  - Se corrieron ambos (2026-08-22, DESPUES del 18/08).
+  - Se reemplazaron los bloques reales dentro del .docx final (con
+    backup previo), preservando el formato. Anexo H y J no se tocaron.
+  - Nota: el .docx esta en .gitignore -nunca estuvo en git-, asi que
+    este cambio es solo local; el backup tambien.
+
+Pendiente (accion tuya en Word): si el documento tiene indice con
+numeros de pagina, actualizar campos (Ctrl+A, F9) porque cambio la
+cantidad de parrafos.
+
+Archivos:
+  tests/resultados_v3/m14_anexos_g_i_regenerados.txt
+  docs/evidencia_anexos/generar_anexo_G.py (reescrito)
+  docs/evidencia_anexos/generar_anexo_I.py (nuevo)
+  docs/evidencia_anexos/Anexo_G_Pipeline_n8n.txt (regenerado)
+  docs/evidencia_anexos/Anexo_I_Dashboard_Streamlit.txt (regenerado)
+  docs/evidencia_anexos/TFI_..._CORREGIDO_v7.docx (anexos reemplazados, NO trackeado en git)
+  docs/evidencia_anexos/TFI_..._CORREGIDO_v7.BACKUP-pre-anexoGI.docx (backup, NO trackeado en git)
+
+------------------------------------------------------------------------
+9) CS-01 a CS-06 - Pruebas negativas de seguridad (M-07)
+------------------------------------------------------------------------
+6 pruebas con curl puro contra Flask/Supabase:
+  CS-01 CSRF sin token          -> 403  OK
+  CS-02 Rate limit 61 req/60s   -> 429 en el request 61  OK
+  CS-03 Honeypot _hp_field lleno -> 200 OK -> BUG encontrado: no se
+        validaba server-side (solo en JS del navegador)
+  CS-04 Sanitizacion script/img -> tags removidos en Supabase  OK
+  CS-05 RLS SELECT leads (anon) -> 200, filas reales con PII -> confirma
+        el mismo hallazgo del punto 4 (L8), con curl puro
+  CS-06 RLS DELETE lead_events (anon) -> 0 filas afectadas  OK (con
+        salvedad metodologica: no se puede aislar 100% de "tabla vacia")
+
+Archivos:
+  tests/resultados_v3/cs01_a_cs06_seguridad_m07.txt
+  tests/resultados_v3/cs_seguridad/ (7 archivos de evidencia cruda)
+
+------------------------------------------------------------------------
+10) FIX - Honeypot ahora se valida server-side
+------------------------------------------------------------------------
+Se agrego en landing_page/app.py (capturar_lead(), tras validar CSRF):
+si _hp_field viene con contenido, se responde 200 {"success": true}
+-igual que un envio real, para no delatar al bot- pero NO se construye
+el payload ni se llama a n8n: el lead se descarta en silencio.
+
+Re-test: honeypot lleno -> 200, pero Supabase confirma 0 filas (no se
+persistio). Regresion verificada: lead legitimo con honeypot vacio
+sigue funcionando normal.
+
+Archivo actualizado: tests/resultados_v3/cs01_a_cs06_seguridad_m07.txt
+Evidencia: tests/resultados_v3/cs_seguridad/CS-03_honeypot_RETEST_post_fix.txt
+
+========================================================================
+PENDIENTES GENERALES (accion tuya, no hecha por mi en esta sesion)
+========================================================================
+  [ ] Cargar SUPABASE_SERVICE_ROLE_KEY (nueva, rotada) como env var real
+      del contenedor Docker de n8n (recrear el contenedor con -e, o el
+      metodo que prefieras de los que te ofreci).
+  [ ] Correr database/migrations/2026-08-22_ia_fallback_cf04.sql en
+      Supabase (SQL Editor).
+  [ ] Sincronizar el n8n EN VIVO con el JSON del repo (reimportar o
+      pegar a mano los cambios de los puntos 5, 6 y 7).
+  [ ] Reactivar los nodos de Gmail y Slack en n8n (se desactivaron para
+      R-03 y no se volvieron a activar).
+  [ ] En Word: actualizar campos del indice del .docx (Ctrl+A, F9) tras
+      el reemplazo de Anexo G/I.
+========================================================================
