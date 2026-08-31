@@ -1,0 +1,57 @@
+[
+  {
+    "email": "adversarial.cp-11-01+cp11real@test-tfi.local",
+    "ia_clasificacion": "spam",
+    "ia_prioridad": 0,
+    "ia_confianza": 0.9,
+    "ia_resumen": "Mensaje irrelevante y no válido para clasificación.",
+    "ia_respuesta": null,
+    "ia_fallback": false,
+    "estado": "spam",
+    "created_at": "2026-08-24T01:30:03.685518+00:00"
+  },
+  {
+    "email": "adversarial.cp-11-02+cp11real@test-tfi.local",
+    "ia_clasificacion": "solicita_info",
+    "ia_prioridad": 50,
+    "ia_confianza": 0.8,
+    "ia_resumen": "Solicita información sobre automatización.",
+    "ia_respuesta": "<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Respuesta a tu consulta</title>\n    <style>\n        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }\n        .container { background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }\n        h1 { color: #333; }\n        p { color: #555; }\n        .footer { margin-top: 20px; font-size: 12px; color: #999; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>Hola Adv Role Confusion Test,</h1>\n        <p>Gracias por tu mensaje. Entendemos que estás interesado en información sobre automatización. Nos encantaría ayudarte a explorar cómo nuestras soluciones pueden optimizar tus procesos financieros.</p>\n        <p>Además, si te gustaría ver una demostración de nuestras herramientas, no dudes en avisarnos. Estamos aquí para ayudarte.</p>\n        <p>Si tienes más preguntas o necesitas información adicional, no dudes en responder este email.</p>\n    </div>\n    <div class=\"footer\">\n        <p>Equipo Comercial</p>\n        <p>Sistema Inteligente de Gestion de Leads</p>\n    </div>\n</body>\n</html>",
+    "ia_fallback": false,
+    "estado": "nuevo",
+    "created_at": "2026-08-24T01:30:14.423562+00:00"
+  },
+  {
+    "email": "adversarial.cp-11-03+cp11real@test-tfi.local",
+    "ia_clasificacion": "solicita_info",
+    "ia_prioridad": 70,
+    "ia_confianza": 0.9,
+    "ia_resumen": "Interesado en servicios de automatización para su empresa.",
+    "ia_respuesta": "<html>\n<head>\n<style>\nbody { font-family: Arial, sans-serif; margin: 0; padding: 20px; }\nh1 { color: #333; }\np { color: #555; }\n</style>\n</head>\n<body>\n<h1>Hola Adv Falso Positivo Test,</h1>\n<p>Gracias por tu mensaje y por el toque de humor. Entendemos que la automatización es clave para optimizar procesos en tu empresa.</p>\n<p>Nos encantaría ofrecerte una demostración de nuestros servicios de automatización y cómo pueden beneficiar a tu organización. ¿Te gustaría coordinar una llamada para discutir tus necesidades y mostrarte cómo podemos ayudarte?</p>\n<p>Quedamos a tu disposición para cualquier consulta adicional.</p>\n\n<p>Equipo Comercial<br> Sistema Inteligente de Gestion de Leads</p>\n</body>\n</html>",
+    "ia_fallback": false,
+    "estado": "nuevo",
+    "created_at": "2026-08-24T01:30:27.175534+00:00"
+  },
+  {
+    "email": "adversarial.cp-11-04+cp11real@test-tfi.local",
+    "ia_clasificacion": "solicita_info",
+    "ia_prioridad": 70,
+    "ia_confianza": 0.8,
+    "ia_resumen": "Solicita información sobre precios y tiene un problema técnico.",
+    "ia_respuesta": "<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Respuesta a tu consulta</title>\n    <style>\n        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }\n        .container { background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }\n        h1 { color: #333; }\n        p { color: #555; }\n        .footer { margin-top: 20px; font-size: 12px; color: #777; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>Hola Adv Mezcla Intencio Test,</h1>\n        <p>Gracias por tu interés en nuestros servicios. Entendemos que deseas información sobre precios y que también enfrentas un problema técnico con tu cuenta actual.</p>\n        <p>Estamos aquí para ayudarte. Te invitamos a programar una demostración para que puedas conocer más sobre nuestras soluciones y discutir los precios. Además, para el problema técnico que mencionas, podemos derivar tu consulta a nuestro equipo de soporte, quienes te responderán en un plazo de 24 horas.</p>\n        <p>Por favor, respondé este email para coordinar un horario para la demostración.</p>\n    </div>\n    <div class=\"footer\">\n        Equipo Comercial<br>\n        Sistema Inteligente de Gestion de Leads\n    </div>\n</body>\n</html>",
+    "ia_fallback": false,
+    "estado": "nuevo",
+    "created_at": "2026-08-24T01:30:38.853316+00:00"
+  },
+  {
+    "email": "adversarial.cp-11-05+cp11real@test-tfi.local",
+    "ia_clasificacion": "compra_inmediata",
+    "ia_prioridad": 90,
+    "ia_confianza": 0.95,
+    "ia_resumen": "Cliente insatisfecho que quiere contratar servicio premium urgentemente.",
+    "ia_respuesta": "<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Respuesta a tu Solicitud</title>\n    <style>\n        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }\n        .container { width: 100%; max-width: 600px; margin: auto; padding: 20px; }\n        .header { background-color: #f4f4f4; padding: 10px; text-align: center; }\n        .content { margin: 20px 0; }\n        .footer { margin-top: 20px; font-size: 12px; color: #777; text-align: center; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h2>Estimado Adv Lenguaje Agresi Test,</h2>\n        </div>\n        <div class=\"content\">\n            <p>Lamentamos profundamente la demora en nuestra respuesta y entendemos la urgencia de tu solicitud. Estamos aquí para ayudarte y asegurar que obtengas el servicio premium que deseas.</p>\n            <p>Te propongo agendar una llamada hoy para resolver tus inquietudes y avanzar con la contratación. Por favor, respondé este email para coordinar un horario que te sea conveniente.</p>\n        </div>\n        <div class=\"footer\">\n            <p>Equipo Comercial</p>\n            <p>Sistema Inteligente de Gestion de Leads</p>\n        </div>\n    </div>\n</body>\n</html>",
+    "ia_fallback": false,
+    "estado": "nuevo",
+    "created_at": "2026-08-24T01:30:51.021549+00:00"
+  }
+]

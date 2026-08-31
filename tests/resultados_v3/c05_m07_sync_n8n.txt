@@ -1,0 +1,143 @@
+========================================================================
+C-05 + M-07 - COMO SINCRONIZAR EL N8N EN VIVO CON EL WORKFLOW CORREGIDO
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-22
+========================================================================
+
+QUE CAMBIO EN n8n_workflow/Pipeline de Leads con IA.json
+  - Los 2 nodos "IA: Clasificar Intencion" e "IA: Generar Email
+    Personalizado" pasaron de tipo n8n-nodes-base.openAi (nodo viejo,
+    deprecado, sin soporte de response_format) a n8n-nodes-base.httpRequest,
+    llamando directo a https://api.openai.com/v1/chat/completions con
+    response_format: json_schema (strict).
+  - Prompts corregidos: sin link de calendario inventado, con la regla
+    "no afirmes adjuntos/enlaces/documentos que no se te proporcionen".
+  - Los 2 nodos "Parsear" se actualizaron para leer
+    choices[0].message.content (formato real de la API) en vez de
+    message.content (formato que devolvia el nodo viejo).
+  - El nombre, id y posicion de cada nodo se mantuvieron iguales, asi
+    las flechas/conexiones del workflow no se rompen.
+
+Tenes 2 formas de llevar esto al n8n que corre en Docker (localhost:5678).
+Elegi UNA de las dos.
+
+------------------------------------------------------------------------
+OPCION 1 (RECOMENDADA) - REIMPORTAR EL ARCHIVO COMPLETO
+------------------------------------------------------------------------
+  1. Abri n8n (localhost:5678) y el workflow "Pipeline de Leads con IA".
+  2. Arriba a la derecha: menu (los 3 puntitos) > "Download" para
+     guardarte una copia de respaldo del workflow actual (por si algo
+     sale mal).
+  3. En el mismo menu: "Import from File" y elegi
+     n8n_workflow/Pipeline de Leads con IA.json (el archivo ya
+     actualizado en el repo).
+  4. n8n va a reemplazar los nodos que coinciden por nombre/id -los 2
+     nodos IA cambian de tipo automaticamente a HTTP Request con todo
+     ya configurado (prompt, response_format, credencial OpenAI).
+  5. Verificar: abri el nodo "IA: Clasificar Intencion" y confirma que
+     dice "HTTP Request" arriba (no "OpenAI") y que en Authentication
+     dice "Predefined Credential Type" > "OpenAI account".
+  6. Guardar (Ctrl+S) y volver a activar el workflow si quedo inactivo.
+  7. Reactivar Gmail y Slack (los desactivaste para R-03): click derecho
+     en cada nodo > Activate (o Ctrl+D de nuevo para des-desactivar).
+
+------------------------------------------------------------------------
+OPCION 2 - ARMAR LOS 2 NODOS A MANO (si preferis no reimportar todo)
+------------------------------------------------------------------------
+Por cada uno de los 2 nodos IA:
+  1. Borra el nodo viejo tipo "OpenAI" (Clasificar o Generar Email).
+  2. Agrega un nodo nuevo "HTTP Request" en el mismo lugar del flujo
+     (mismas conexiones de entrada/salida que tenia el nodo borrado).
+  3. Configuralo asi:
+       Method:          POST
+       URL:             https://api.openai.com/v1/chat/completions
+       Authentication:  Predefined Credential Type
+       Credential Type: OpenAI
+       Credential:      OpenAI account (la misma que ya usabas)
+       Send Headers:    ON
+         Content-Type = application/json
+       Send Body:       ON
+       Body Content Type: JSON
+       Specify Body:    Using JSON
+       JSON (pegar EXACTAMENTE el bloque de abajo en el campo grande de
+       JSON body, incluido el "=" del principio -es lo que le dice a n8n
+       que es una expresion, no texto literal):
+
+  --- JSON body para el nodo "IA: Clasificar Intencion" ---
+={{ JSON.stringify({
+  model: "gpt-4o-mini",
+  temperature: 0.2,
+  max_tokens: 200,
+  messages: [
+    { role: "system", content: "Sos un clasificador de intención de leads para una empresa de consultoría. Analizás el mensaje de un lead y devolvés EXCLUSIVAMENTE los campos definidos por el esquema JSON provisto, sin texto adicional, sin markdown, sin explicaciones.\n\nCategorías permitidas para \"clasificacion\" (elegí exactamente una):\n- compra_inmediata: expresa intención clara de contratar o comprar YA\n- solicita_info: pide información general sobre servicios, planes o precios, sin urgencia\n- soporte: consulta técnica, problema o queja de un cliente/prospecto\n- spam: mensaje genérico, irrelevante, publicitario o sin sentido\n\nReglas:\n- \"prioridad\": entero de 0 a 100 (mayor = más urgente/valioso comercialmente)\n- \"confianza\": número entre 0.0 y 1.0 (tu certeza en la clasificación)\n- \"resumen\": máximo 15 palabras, en español\n- No afirmes la existencia de adjuntos, enlaces ni documentos que no se te proporcionen explícitamente en el mensaje del lead." },
+    { role: "user", content: "Datos del lead:\nNombre: " + $json.nombre + " " + $json.apellido + "\nFuente: " + $json.fuente + "\nMensaje: " + $json.mensaje }
+  ],
+  response_format: {
+    type: "json_schema",
+    json_schema: {
+      name: "clasificacion_lead",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          clasificacion: { type: "string", enum: ["compra_inmediata", "solicita_info", "soporte", "spam"] },
+          prioridad: { type: "integer", minimum: 0, maximum: 100 },
+          confianza: { type: "number", minimum: 0, maximum: 1 },
+          resumen: { type: "string" }
+        },
+        required: ["clasificacion", "prioridad", "confianza", "resumen"],
+        additionalProperties: false
+      }
+    }
+  }
+}) }}
+
+  --- JSON body para el nodo "IA: Generar Email Personalizado" ---
+={{ JSON.stringify({
+  model: "gpt-4o-mini",
+  temperature: 0.5,
+  max_tokens: 500,
+  messages: [
+    { role: "system", content: "Sos un representante comercial profesional de una consultora de software. Generás un email de respuesta personalizado para un lead, en HTML válido, diseño profesional y responsive, devolviendo EXCLUSIVAMENTE los campos definidos por el esquema JSON provisto.\n\nAdaptá el tono según la clasificación del lead:\n- compra_inmediata: directo, ofrecé agendar una llamada hoy con un llamado a la acción claro EN TEXTO (nunca un link).\n- solicita_info: compartí información útil, ofrecé una demo, tono servicial.\n- soporte: mostrá empatía, indicá que derivás a soporte con respuesta en 24h.\n\nReglas:\n- Saludo con el nombre del lead.\n- Cuerpo personalizado según su mensaje original.\n- Firma profesional.\n- NO uses placeholders tipo [nombre] ni [empresa].\n- No afirmes la existencia de adjuntos, enlaces ni documentos que no se te proporcionen explícitamente: si querés invitar a agendar una reunión, hacelo con una llamada a la acción en texto (por ejemplo \"respondé este email para coordinar un horario\"), sin inventar URLs de calendario ni de ningún otro tipo." },
+    { role: "user", content: "Datos del lead:\nNombre: " + $json.nombre + " " + $json.apellido + "\nClasificacion IA: " + $json.ia_clasificacion + "\nPrioridad: " + $json.ia_prioridad + "/100\nMensaje original: " + $json.mensaje + "\n\nGenera el email de respuesta." }
+  ],
+  response_format: {
+    type: "json_schema",
+    json_schema: {
+      name: "email_generado",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          asunto: { type: "string" },
+          cuerpo_html: { type: "string" }
+        },
+        required: ["asunto", "cuerpo_html"],
+        additionalProperties: false
+      }
+    }
+  }
+}) }}
+
+  4. Renombra el nodo nuevo exactamente igual al nodo viejo que borraste
+     (mismo nombre con emoji incluido), para que las conexiones del
+     workflow no se rompan.
+
+  5. En los 2 nodos "Parsear" (codigo), cambia esta linea:
+       const rawOutput = $input.first().json.message?.content || '{}';
+     por esta:
+       const rawOutput = $input.first().json.choices?.[0]?.message?.content || '{}';
+
+  6. Guardar (Ctrl+S).
+
+------------------------------------------------------------------------
+VERIFICACION RAPIDA (cualquiera de las 2 opciones)
+------------------------------------------------------------------------
+  Mandar 1 lead de prueba (formulario o smoke test) y confirmar en
+  Supabase que ia_clasificacion se sigue llenando normalmente. Si algo
+  falla, revisar en n8n el log de ejecucion del nodo HTTP Request: el
+  error mas comun seria un typo en el JSON body (falta una coma o llave).
+
+  No te olvides de reactivar los nodos de Gmail y Slack (los
+  desactivamos manualmente para la corrida de R-03).
+========================================================================

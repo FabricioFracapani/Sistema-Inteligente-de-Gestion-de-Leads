@@ -1,0 +1,23 @@
+========================================================================
+C-02 - LONGITUD DE MENSAJE (91 casos con HTTP 200) PARA FIGURA LRT vs LONGITUD
+TFI - Sistema Inteligente de Gestion de Leads
+========================================================================
+
+FUENTE
+  Universo: 91 casos con status_http=200 en tests/resultados_v3/resultados_100_pruebas.csv
+  Longitud calculada sobre el mensaje ORIGINAL completo (tests/test_100_leads.py generar_100_casos()), NO sobre el campo 'mensaje' del CSV -que esta truncado a 200 caracteres-.
+  Casos afectados por esa truncacion si se hubiera usado el CSV: 1 (ej. CP-10-01, mensaje real de 653 caracteres pero guardado truncado a 200 en el CSV).
+
+ESTADISTICOS DESCRIPTIVOS (longitud en caracteres, n=91)
+  Media:    69.6
+  Mediana:  57.0
+  Desvio:   67.8
+  Minimo:   3
+  Maximo:   653
+
+CORRELACION LRT vs LONGITUD DE MENSAJE
+  r de Pearson: 0.147
+  (para la figura de dispersion: eje X = longitud_mensaje_caracteres, eje Y = lrt_flask_segundos, un punto por caso)
+
+ARCHIVO DE DATOS
+  tests/resultados_v3/c02_longitud_mensajes.csv (caso_id, categoria, tipo, longitud_mensaje_caracteres, lrt_flask_segundos)

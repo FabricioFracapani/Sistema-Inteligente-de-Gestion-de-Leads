@@ -1,0 +1,34 @@
+services:
+  n8n:
+    # Pineado por digest ademas de tag: la version exacta verificada en este
+    # proyecto es n8n 2.18.7 (docker exec n8n n8n --version). "latest" solo
+    # se usa como tag de referencia; el digest es lo que realmente fija la
+    # version (M-19/M-20 - reproducibilidad exacta del stack).
+    image: n8nio/n8n@sha256:4613a202077b00e9a66a9ed83cccae01866ddc0df59222d91409bfb0d70007dd
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Cookie de sesion sin HTTPS (entorno local). En produccion (HTTPS
+      # real) sacar esta variable o ponerla en true.
+      - N8N_SECURE_COOKIE=false
+      # Necesario para que los nodos puedan leer $env.SUPABASE_* en las
+      # expresiones (ver n8n_workflow/Pipeline de Leads con IA.json).
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      # Usada por el nodo "Actualizar IA en Supabase" (PATCH, bypassea RLS).
+      # Cargar aca la key ROTADA - nunca la vieja expuesta en el historial
+      # de git (ver tests/resultados_v3/cf04_fallback_m15_m06.txt).
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
+    # Mismo volumen nombrado que ya se usaba con el "docker run" manual
+    # (docs/LEVANTAR_PROYECTO.md) - si ese volumen ya existe en el host,
+    # docker compose lo reutiliza tal cual, sin perder workflows/credenciales.
+    external: true
+    name: n8n_data

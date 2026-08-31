@@ -1,0 +1,175 @@
+========================================================================
+CS-01 A CS-06 - PRUEBAS NEGATIVAS DE SEGURIDAD (M-07)
+TFI - Sistema Inteligente de Gestion de Leads
+Fecha: 2026-08-22
+Evidencia cruda de cada prueba en: tests/resultados_v3/cs_seguridad/
+========================================================================
+
+RESUMEN EJECUTIVO
+  4 de 6 pruebas se comportaron como se esperaba (CSRF, rate limiting,
+  input sanitization, RLS append-only en lead_events). 2 de 6 NO dieron
+  el resultado esperado en la primera corrida:
+    - CS-03 (honeypot): el campo NO se validaba en el servidor. Un POST
+      directo a la API con _hp_field lleno se aceptaba igual (200 OK).
+      CORREGIDO el mismo dia (ver seccion CS-03): ahora se valida
+      server-side en landing_page/app.py y se re-testeo con exito.
+    - CS-05 (RLS SELECT en leads): la anon key SI puede leer toda la
+      tabla leads (200 OK, filas reales con PII en texto plano). Esto
+      coincide exactamente con el hallazgo ya documentado en
+      tests/resultados_v3/m02_auth_dashboard_l8.txt: la policy RLS
+      "anon_can_read_leads" es intencional pero deja el dashboard sin
+      autenticacion real, y ahora queda demostrado con curl puro
+      (sin pasar por Streamlit). Este NO se corrigio en esta tarea
+      (require decision de arquitectura: login real en el dashboard),
+      queda como limitacion L8.
+
+------------------------------------------------------------------------
+CS-01 - CSRF: POST sin token
+------------------------------------------------------------------------
+Comando:
+  curl -s -i -X POST http://localhost:5000/api/leads \
+    -d "nombre=CS01&apellido=Test&email=cs01@test-tfi.local&telefono=..." \
+    -d "mensaje=prueba csrf sin token&fuente=cs_seguridad"
+  (sin cookie de sesion, sin campo _csrf_token)
+
+Resultado: HTTP 403 FORBIDDEN
+Evidencia: tests/resultados_v3/cs_seguridad/CS-01_csrf.txt
+Veredicto: OK, se comporta como se espera. validate_csrf() en
+  landing_page/app.py rechaza el POST porque no hay token que matchear
+  contra la sesion.
+
+------------------------------------------------------------------------
+CS-02 - RATE LIMITING: 61 requests en 60s desde una IP
+------------------------------------------------------------------------
+Comando: loop de 61 POST identicos (sin token valido, para aislar solo
+  el conteo de rate limit) contra /api/leads desde la misma IP.
+
+Resultado: requests 1-60 -> HTTP 403 (rechazadas por CSRF, pero SI
+  cuentan para el rate limit); request 61 -> HTTP 429 TOO MANY REQUESTS.
+  Duracion total: 3 segundos (bien dentro de la ventana de 60s).
+Evidencia: tests/resultados_v3/cs_seguridad/CS-02_rate_limiting.txt
+Veredicto: OK, se comporta como se espera. El decorador rate_limit()
+  se ejecuta ANTES que la validacion de CSRF (limita por IP sin importar
+  si el request es valido), asi que el limite de 60/60s se cumple exacto.
+Nota metodologica: por esto se corrio CS-02 primero, antes que CS-01/03/04,
+  para no arrastrar el contador entre pruebas (medio minuto de espera
+  entre corridas para no pisar el rate limit de las pruebas siguientes).
+
+------------------------------------------------------------------------
+CS-03 - HONEYPOT: POST con _hp_field lleno
+------------------------------------------------------------------------
+Comando: sesion+CSRF real (GET /), luego POST a /api/leads con datos
+  validos + _hp_field="soy_un_bot_llenando_el_campo_oculto".
+
+Resultado: HTTP 200 OK, {"success": true, "redirect": "/gracias?..."}
+  -> el lead se acepto y se reenvio a n8n como si fuera legitimo.
+Evidencia: tests/resultados_v3/cs_seguridad/CS-03_honeypot.txt
+Veredicto: NO SE COMPORTA COMO SE ESPERABA. El honeypot _hp_field
+  SOLO se valida en JavaScript del lado cliente
+  (landing_page/templates/index.html linea ~272-273: "Honeypot check").
+  landing_page/app.py NUNCA lee ni valida _hp_field -no hay ninguna
+  referencia a ese campo en el backend-. Cualquier bot que POSTee
+  directo a /api/leads (bypasseando el HTML/JS del formulario, que es
+  exactamente lo que hace este curl) evade el honeypot por completo.
+  El README lista "Honeypot anti-spam" como 1 de 13 medidas de
+  seguridad; en la practica era una proteccion solo client-side,
+  trivial de saltear, no una defensa real del backend.
+
+  CORREGIDO (mismo dia): se agrego en landing_page/app.py, dentro de
+  capturar_lead(), justo despues de la validacion CSRF:
+    if request.form.get('_hp_field', '').strip():
+        log_safe(request.form.get('email', ''), 'HONEYPOT_TRIGGERED')
+        return jsonify({'success': True, 'redirect': url_for('gracias', ...)}), 200
+  Devuelve 200 con el mismo "success": true de un envio real (para no
+  darle al bot una senal de que fue detectado), pero NO construye el
+  payload ni llama a n8n -el lead se descarta en silencio-.
+
+  RE-TEST post-fix (mismo _hp_field lleno, misma request):
+    HTTP 200 OK, {"success": true, "redirect": "/gracias?..."}
+    Verificacion en Supabase 8s despues: [] (0 filas) -> confirmado que
+    el lead NO se persistio ni se reenvio a n8n.
+  Evidencia: tests/resultados_v3/cs_seguridad/CS-03_honeypot_RETEST_post_fix.txt
+
+  REGRESION verificada: un lead legitimo con _hp_field vacio se sigue
+  aceptando y persistiendo normalmente en Supabase (HTTP 200,
+  ia_clasificacion asignada por la IA) -el fix no rompe el flujo normal.
+
+------------------------------------------------------------------------
+CS-04 - INPUT SANITIZATION: payload <script>/<img onerror>
+------------------------------------------------------------------------
+Comando: sesion+CSRF real, POST con
+  mensaje = "<script>alert(1)</script> hola <img src=x onerror=alert(1)> mundo"
+
+Resultado: HTTP 200 OK (aceptado). Verificacion en Supabase (anon key,
+  15s despues): mensaje persistido = "alert(1) hola  mundo"
+Evidencia:
+  tests/resultados_v3/cs_seguridad/CS-04_input_sanitization_post.txt
+  tests/resultados_v3/cs_seguridad/CS-04_input_sanitization_verificacion_supabase.txt
+Veredicto: OK, se comporta como se espera. sanitize_input() en
+  landing_page/app.py (linea 174-184, regex re.sub(r'<[^>]*>', '', value))
+  elimina las etiquetas <script> e <img> completas ANTES de reenviar el
+  payload a n8n. Lo que queda en la base es texto inerte ("alert(1)"
+  como string, no como script ejecutable), consistente con el hallazgo
+  ya documentado en tests/resultados_v3/m07_html_injection.txt para el
+  caso CP-10-05. La IA clasifico este mensaje como "spam" (dato
+  incidental, no relevante a la prueba de seguridad en si).
+
+------------------------------------------------------------------------
+CS-05 - RLS SELECT sobre `leads` con anon key
+------------------------------------------------------------------------
+Comando: curl directo a Supabase REST (sin pasar por Flask/n8n):
+  curl -s -i "$SUPABASE_URL/rest/v1/leads?select=nombre,email,mensaje&limit=3" \
+    -H "apikey: <anon key>" -H "Authorization: Bearer <anon key>"
+
+Resultado: HTTP 200, devuelve 3 filas reales con nombre/email/mensaje
+  en texto plano (ej: "compra.caso01@test-tfi.local").
+Evidencia: tests/resultados_v3/cs_seguridad/CS-05_rls_select_leads_anon.txt
+Veredicto: NO da el resultado que se esperaba en el enunciado
+  (0 filas/error). Esto NO es un bug del test: es el comportamiento
+  RLS real y ya documentado. La policy "anon_can_read_leads" (RLS
+  activo, USING (true), rol anon) otorga SELECT irrestricto de toda la
+  tabla leads a CUALQUIERA que tenga la anon key -no hace falta pasar
+  por el dashboard ni autenticarse-. Ver detalle completo, causa raiz y
+  recomendacion en tests/resultados_v3/m02_auth_dashboard_l8.txt (L8).
+  Esta prueba con curl puro es evidencia adicional e independiente del
+  mismo hallazgo: se reproduce con una sola linea de curl, sin
+  Streamlit de por medio.
+
+------------------------------------------------------------------------
+CS-06 - RLS DELETE sobre `lead_events` (append-only) con anon key
+------------------------------------------------------------------------
+Comando: curl directo a Supabase REST:
+  curl -s -i -X DELETE "$SUPABASE_URL/rest/v1/lead_events?id_evento=not.is.null" \
+    -H "apikey: <anon key>" -H "Authorization: Bearer <anon key>" \
+    -H "Prefer: return=representation,count=exact"
+
+Resultado: HTTP 200, body "[]", header "content-range: */0" (con
+  count=exact, ese "0" es la cantidad de filas que RLS deja visibles/
+  afectables para el rol anon, no necesariamente el total fisico de la
+  tabla).
+Evidencia: tests/resultados_v3/cs_seguridad/CS-06_rls_delete_lead_events_anon.txt
+Veredicto: OK, consistente con lo esperado (denegado en la practica: 0
+  filas afectadas). anon no tiene ninguna policy de SELECT ni DELETE
+  sobre lead_events (schema.sql: solo "authenticated_can_read_events"
+  para SELECT; "Nadie puede MODIFICAR ni ELIMINAR eventos" por
+  ausencia de policy UPDATE/DELETE para cualquier rol). RLS bloquea el
+  DELETE de anon por default-deny.
+LIMITACION DE LA PRUEBA (honestidad metodologica): con solo la anon key
+  no se puede confirmar si lead_events tenia filas fisicas antes del
+  intento (anon tampoco puede hacer SELECT ahi). El "*/0" prueba que
+  RLS no deja pasar el DELETE para anon, pero no aisla completamente
+  "tabla vacia" de "RLS filtrando"; para un descarte 100% concluyente
+  haria falta repetir la prueba con una key con permiso de lectura
+  (authenticated o service_role) que confirme filas existentes antes y
+  despues del intento de DELETE con anon.
+
+========================================================================
+TABLA RESUMEN
+========================================================================
+  CS-01 CSRF sin token                    -> 403  OK (esperado)
+  CS-02 Rate limit 61/60s                 -> 429 en el req 61  OK (esperado)
+  CS-03 Honeypot _hp_field lleno          -> 200 OK (bypass) -> CORREGIDO y re-testeado, ahora descarta en silencio
+  CS-04 Sanitizacion script/img           -> 200, tags removidos  OK (esperado)
+  CS-05 RLS SELECT leads (anon)           -> 200, filas reales  **FALLA** (RLS no restringe lectura anon)
+  CS-06 RLS DELETE lead_events (anon)     -> 200, 0 filas  OK (esperado, con la salvedad de arriba)
+========================================================================
