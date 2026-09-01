@@ -307,54 +307,38 @@ else:
 
             with col_action:
                 st.caption(f"Fuente: {lead.get('fuente', 'N/A')}")
-                if st.button("🔍 Ver detalle", key=f"btn_{lead.get('id_lead')}", use_container_width=True):
-                    st.session_state["lead_seleccionado"] = lead
 
-# ============================================
-# DETALLE DEL LEAD SELECCIONADO
-# ============================================
-if "lead_seleccionado" in st.session_state and st.session_state["lead_seleccionado"]:
-    lead = st.session_state["lead_seleccionado"]
+            with st.expander("🔍 Ver detalle", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Nombre:** {lead.get('nombre', '')} {lead.get('apellido', '')}")
+                    st.markdown(f"**Email:** {lead.get('email', '')}")
+                    st.markdown(f"**Teléfono:** {lead.get('telefono', 'No proporcionado')}")
+                    st.markdown(f"**Fuente:** {lead.get('fuente', 'N/A')}")
+                    st.markdown(f"**Fecha:** {lead.get('timestamp_ingesta', '')}")
 
-    st.divider()
-    with st.container(border=True):
-        col_header, col_close = st.columns([5, 1])
-        with col_header:
-            st.markdown("### 🔍 Detalle del Lead")
-        with col_close:
-            if st.button("❌ Cerrar", use_container_width=True):
-                del st.session_state["lead_seleccionado"]
-                st.rerun()
+                with col2:
+                    st.markdown(f"**Clasificación IA:** {lead.get('ia_clasificacion', 'N/A')}")
+                    st.markdown(f"**Prioridad IA:** {lead.get('ia_prioridad', 0)}/100")
+                    st.markdown(f"**Confianza IA:** {(lead.get('ia_confianza') or 0):.0%}")
+                    st.markdown(f"**Estado:** {lead.get('estado', 'nuevo')}")
+                    st.markdown(f"**ID:** `{lead.get('id_lead', '')}`")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(f"**Nombre:** {lead.get('nombre', '')} {lead.get('apellido', '')}")
-            st.markdown(f"**Email:** {lead.get('email', '')}")
-            st.markdown(f"**Teléfono:** {lead.get('telefono', 'No proporcionado')}")
-            st.markdown(f"**Fuente:** {lead.get('fuente', 'N/A')}")
-            st.markdown(f"**Fecha:** {lead.get('timestamp_ingesta', '')}")
+                st.divider()
 
-        with col2:
-            st.markdown(f"**Clasificación IA:** {lead.get('ia_clasificacion', 'N/A')}")
-            st.markdown(f"**Prioridad IA:** {lead.get('ia_prioridad', 0)}/100")
-            st.markdown(f"**Confianza IA:** {(lead.get('ia_confianza') or 0):.0%}")
-            st.markdown(f"**Estado:** {lead.get('estado', 'nuevo')}")
-            st.markdown(f"**ID:** `{lead.get('id_lead', '')}`")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.markdown("#### 💬 Mensaje Original")
+                    st.info(lead.get("mensaje", "Sin mensaje"))
 
-        st.divider()
+                with col_b:
+                    st.markdown("#### 🤖 Resumen (IA)")
+                    st.success(lead.get("ia_resumen", "Sin clasificar"))
 
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("#### 💬 Mensaje Original")
-            st.info(lead.get("mensaje", "Sin mensaje"))
-        with col_b:
-            st.markdown("#### 🤖 Resumen (IA)")
-            st.success(lead.get("ia_resumen", "Sin clasificar"))
-
-        if lead.get("ia_respuesta"):
-            st.markdown("#### 📧 Email Generado por IA")
-            with st.expander("Ver email completo", expanded=False):
-                st.html(lead["ia_respuesta"])
+                if lead.get("ia_respuesta"):
+                    st.markdown("#### 📧 Email Generado por IA")
+                    with st.expander("Ver email completo", expanded=False):
+                        st.html(lead["ia_respuesta"])
 
 # ============================================
 # FOOTER
