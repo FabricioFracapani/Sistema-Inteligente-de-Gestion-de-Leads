@@ -144,7 +144,7 @@ with st.sidebar:
     clasificaciones = st.multiselect(
         "Clasificación IA",
         CLASIFICACIONES_OPC,
-        default=["compra_inmediata", "solicita_info", "soporte"],
+        default=["compra_inmediata", "solicita_info", "soporte", "spam"],
         key="f_clasificaciones"
     )
 
@@ -217,7 +217,7 @@ leads_filtrados = [
     if l.get("ia_clasificacion") in clasificaciones
     and l.get("estado") in estados
     and (l.get("ia_prioridad") or 0) >= prioridad_min
-    and l.get("fuente") in fuentes
+    and (not fuentes or l.get("fuente") in fuentes)
     and _coincide_busqueda(l)
 ]
 
